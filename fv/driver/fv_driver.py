@@ -17,7 +17,7 @@ usage:
   python3 fv_driver.py classify <checkout> <component> [--dry-run] [--model M] [--timeout S]
   python3 fv_driver.py check    <checkout> <component>
 """
-import argparse, hashlib, json, os, subprocess, sys, time
+import argparse, hashlib, json, os, re, subprocess, sys, time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -337,25 +337,41 @@ def step_sync(a):
 
 
 def interface_methods(checkout, component):
-    """The component's public methods: the fn names inside the define_interface! block of the interface it implements."""
-    import re
+    return interfaces(checkout, component)[0]
+
+
+def interfaces(checkout, component):
+    """(methods, factories). methods = the component's public methods: the fn names inside the define_interface! block of the interface it implements,
+    plus those of any plain trait the component implements that an interface method hands out (`Box<dyn T>`)."""
     src = checkout / "components" / component / "src"
     impls = set()
     for f in src.rglob("*.rs"):
         impls |= set(re.findall(r"impl\s+(I[A-Z]\w*)\s+for\s+\w+", f.read_text(errors="replace")))
-    methods = []
-    for f in (checkout / "components" / "interfaces" / "src").rglob("*.rs"):
-        t = f.read_text(errors="replace")
+
+    def body(t, m):
+        depth, i = 1, m.end()
+        while i < len(t) and depth:
+            depth += {"{": 1, "}": -1}.get(t[i], 0)
+            i += 1
+        return t[m.end():i]
+    texts = [f.read_text(errors="replace") for f in (checkout / "components" / "interfaces" / "src").rglob("*.rs")]
+    methods, handed_out, factories = [], set(), set()
+    for t in texts:
         for name in impls:
             m = re.search(r"pub\s+" + re.escape(name) + r"\s*\{", t)
-            if not m:
-                continue
-            depth, i = 1, m.end()
-            while i < len(t) and depth:
-                depth += {"{": 1, "}": -1}.get(t[i], 0)
-                i += 1
-            methods += re.findall(r"\bfn\s+([a-z_][a-z0-9_]*)\s*\(", t[m.end():i])
-    return sorted(dict.fromkeys(methods))
+            if m:
+                b = body(t, m)
+                methods += re.findall(r"\bfn\s+([a-z_][a-z0-9_]*)\s*\(", b)
+                for fn, ret in re.findall(r"\bfn\s+([a-z_][a-z0-9_]*)\s*\([^)]*\)\s*->\s*([^;{]*)", b):
+                    got = set(re.findall(r"dyn\s+(I[A-Z]\w*)", ret)) & impls
+                    if got:
+                        handed_out |= got; factories.add(fn)
+    for t in texts:
+        for name in handed_out:
+            m = re.search(r"pub\s+trait\s+" + re.escape(name) + r"\b[^{;]*\{", t)
+            if m:
+                methods += re.findall(r"\bfn\s+([a-z_][a-z0-9_]*)\s*\(", body(t, m))
+    return sorted(dict.fromkeys(methods)), factories
 
 
 def id_prefix(component):
@@ -427,6 +443,106 @@ def check_reconcile(unified, spec, code):
     return errs
 
 
+ORIGINS = ("spec+code", "divergent", "spec-only", "code-only", "not-verifiable")
+
+
+def check_pairing(pairing, spec, code):
+    """The reconcile agent's pairing table: every input id in exactly one group, no unknown id, sides consistent."""
+    recs = {"spec": {p["id"]: p for p in spec.get("properties") or []},
+            "code": {p["id"]: p for p in code.get("properties") or []}}
+    groups = pairing.get("groups") if isinstance(pairing, dict) else None
+    if not isinstance(groups, list) or not groups:
+        return ["no `groups:` list"]
+    errs, used = [], {"spec": [], "code": []}
+    for n, g in enumerate(groups):
+        if not isinstance(g, dict):
+            errs.append(f"group {n}: not a mapping"); continue
+        o = g.get("origin")
+        sides = {s: g.get(s) or [] for s in ("spec", "code")}
+        if o not in ORIGINS:
+            errs.append(f"group {n}: origin {o!r} is not one of {ORIGINS}")
+        if any(not isinstance(v, list) for v in sides.values()):
+            errs.append(f"group {n}: spec/code must be lists"); continue
+        for s, v in sides.items():
+            used[s] += v
+        if not sides["spec"] and not sides["code"]:
+            errs.append(f"group {n}: empty")
+        if o in ("spec+code", "divergent") and not (sides["spec"] and sides["code"]):
+            errs.append(f"group {n}: {o} needs ids on both sides")
+        if o == "spec-only" and sides["code"] or o == "code-only" and sides["spec"]:
+            errs.append(f"group {n}: {o} has ids on the other side")
+        if o == "divergent" and not str(g.get("note") or "").strip():
+            errs.append(f"group {n}: divergent without a note")
+        nv = [i for s, v in sides.items() for i in v if i in recs[s] and not recs[s][i].get("verifiable")]
+        if o == "not-verifiable" and len(nv) != len(sides["spec"]) + len(sides["code"]):
+            errs.append(f"group {n}: not-verifiable group holds a verifiable id")
+        if o != "not-verifiable" and nv:
+            errs.append(f"group {n}: verifiable group holds not-verifiable ids {nv[:3]}")
+    for s in ("spec", "code"):
+        u, ids = used[s], set(recs[s])
+        if set(u) - ids:
+            errs.append(f"{s}: ids not in the input: {sorted(set(u) - ids)[:5]}")
+        if ids - set(u):
+            errs.append(f"{s}: {len(ids - set(u))} input ids never used (e.g. {sorted(ids - set(u))[:3]})")
+        dup = sorted({x for x in u if u.count(x) > 1})
+        if dup:
+            errs.append(f"{s}: ids used more than once: {dup[:5]}")
+    return errs[:30]
+
+
+def build_unified(pairing, spec, code, component, pin, methods, factories=()):
+    """Unified list from a checked pairing table - statements, traces and methods copied, never rewritten."""
+    recs = {"spec": {p["id"]: p for p in spec.get("properties") or []},
+            "code": {p["id"]: p for p in code.get("properties") or []}}
+    out, seen = [], set()
+
+    def meths(rs):
+        """Methods named in the records' subjects; if none, those named in their statements."""
+        for field in ("subject", "statement"):
+            found = [m for m in methods if any(re.search(rf"(?<![\w]){re.escape(m)}(?![\w])", str(r.get(field) or ""))
+                                               for r in rs)]
+            if len(found) > 1:                     # "node handle from create_node (shout)" is about shout
+                found = [m for m in found if m not in factories] or found
+            if found:
+                return found
+        return []
+    for g in pairing["groups"]:
+        sp = [recs["spec"][i] for i in g.get("spec") or []]
+        cd = [recs["code"][i] for i in g.get("code") or []]
+        first = (sp + cd)[0]
+        rid = str(g.get("id") or first["id"])
+        if rid in seen:
+            rid = f"{rid}-{'CODE' if not sp else 'SPEC'}"
+        k = 2
+        while rid in seen:
+            rid, k = f"{rid}-{k}", k + 1
+        seen.add(rid)
+        traces = []
+        for r in sp + cd:
+            traces += [t for t in r.get("traces") or [] if t not in traces]
+        rec = {"id": rid, "origin": g["origin"], "kind": first.get("kind"),
+               "verifiable": g["origin"] != "not-verifiable"}
+        if rec["verifiable"]:
+            rec["methods"] = meths(sp + cd)
+            rec["statement"] = str(g.get("statement") or first.get("statement") or "").strip()
+            if g["origin"] == "divergent":
+                rec["divergence_note"] = str(g["note"]).strip()
+                rec["code_statement"] = " ".join(str(r.get("statement") or "").strip() for r in cd)
+        else:
+            rec["scope"] = first.get("scope")
+            rec["reason"] = " ".join(str(r.get("reason") or "").strip() for r in sp + cd)
+        rec["traces"] = traces
+        rec["paired_from"] = {"spec": [r["id"] for r in sp], "code": [r["id"] for r in cd]}
+        out.append(rec)
+    oc = collections_count([p["origin"] for p in out])
+    return {"component": component, "pin": pin, "interface_methods": methods,
+            "counts": {"total": len(out), "verifiable": sum(1 for p in out if p["verifiable"]), "origins": oc,
+                       "spec_records": len(recs["spec"]), "code_records": len(recs["code"])},
+            "reconciliation": {"method": "two blind readers; agent pairing table; driver-built records",
+                               "pairing": "reconcile_pairing.yaml"},
+            "properties": out}
+
+
 def step_extract(a):
     """Role 1: two BLIND readers in separate sandboxes, then reconcile; the driver checks integrity."""
     import shutil, yaml
@@ -436,7 +552,7 @@ def step_extract(a):
     verif = checkout / "components" / a.component / "verif"
     verif.mkdir(parents=True, exist_ok=True)
     run = Run(verif, "extract")
-    methods = interface_methods(checkout, a.component)
+    methods, factories = interfaces(checkout, a.component)
     pin = commit_of(checkout)
     run.event("start", component=a.component, pin=pin, interface_methods=len(methods))
     if not methods:
@@ -446,6 +562,13 @@ def step_extract(a):
     outs = {}
     for side, contents, hint in (("spec", "the component's specs/ and the interface definitions", "FR / US / AS / SC ids"),
                                  ("code", "the component's src/, Cargo.toml and the interface definitions", "file:line")):
+        prev = verif / f"{side}_properties.yaml"
+        if prev.exists() and not a.fresh and not a.dry_run:
+            d, errs = check_extraction(prev)
+            if not errs and str(d.get("driver_pin")) == pin:     # same commit: the blind list is still valid
+                outs[side] = d
+                run.event("reused", side=side, records=len(d["properties"]), driver_pin=pin)
+                continue
         box = sandbox(checkout, a.component, side)
         out = box / f"{side}_properties.yaml"
         prompt = (PROMPTS / "reader.md").read_text().format(
@@ -468,7 +591,8 @@ def step_extract(a):
                 run.event("invalid", side=side, problem=e)
             run.save(f"failed: {side} extraction invalid")
             return 1
-        shutil.copy2(out, verif / f"{side}_properties.yaml")
+        d["driver_pin"] = pin                                     # driver-owned: the commit this list was read at
+        yaml.safe_dump(d, open(verif / f"{side}_properties.yaml", "w"), sort_keys=False, allow_unicode=True, width=110)
         outs[side] = d
         run.event("extracted", side=side, records=len(d["properties"]),
                   verifiable=sum(1 for p in d["properties"] if p.get("verifiable")))
@@ -477,40 +601,65 @@ def step_extract(a):
         run.save("dry run")
         return 0
     out = verif / "unified_properties.yaml"
+    pair = verif / "reconcile_pairing.yaml"
     prompt = (PROMPTS / "reconcile.md").read_text().format(
-        component=a.component, out=out, spec_props=verif / "spec_properties.yaml",
-        code_props=verif / "code_properties.yaml", skill=FV / "skills" / "build-property-inventory" / "SKILL.md",
-        methods=methods, pin=pin)
+        component=a.component, out=pair, spec_props=verif / "spec_properties.yaml",
+        code_props=verif / "code_properties.yaml", skill=FV / "skills" / "build-property-inventory" / "SKILL.md")
     (run.dir / "prompt_reconcile.md").write_text(prompt)
     before = set(changed_files(checkout))
-    ok, text, dt = agent(prompt, checkout, ["Read", "Grep", "Glob", "Write"], model=a.model, timeout=a.timeout,
+    reuse = False
+    if pair.exists() and not a.fresh:                       # a checked table from this commit is still valid
+        try:
+            prev = yaml.safe_load(open(pair)) or {}
+            reuse = (isinstance(prev, dict) and str(prev.get("driver_pin")) == pin
+                     and all(str(outs[s].get("driver_pin")) == pin for s in outs)
+                     and not check_pairing(prev, outs["spec"], outs["code"]))
+        except yaml.YAMLError:
+            reuse = False
+    if reuse:
+        ok, dt = True, 0
+        run.event("reused", side="pairing", groups=len(prev["groups"]), driver_pin=pin)
+    else:
+        ok, text, dt = agent(prompt, checkout, ["Read", "Grep", "Glob", "Write"], model=a.model, timeout=a.timeout,
                          log=run.dir / "agent_reconcile.log", name="reconcile",
-                         policy={"writable": [str(out)],
-                                 "stop_check": selfcheck_cmd("reconcile", out, verif / "spec_properties.yaml",
+                         policy={"writable": [str(pair)],
+                                 "stop_check": selfcheck_cmd("reconcile", pair, verif / "spec_properties.yaml",
                                                              verif / "code_properties.yaml")})
-    run.event("reconcile", ok=ok, seconds=dt)
+        run.event("reconcile", ok=ok, seconds=dt)
     stray = [f for f in set(changed_files(checkout)) - before
-             if not f.endswith(("verif/unified_properties.yaml", "spec_properties.yaml", "code_properties.yaml"))
+             if not f.endswith(("reconcile_pairing.yaml", "spec_properties.yaml", "code_properties.yaml"))
              and "/.run/" not in f]
     if stray:
         run.event("FAIL", reason="reconcile agent wrote outside its output", files=stray[:10])
         run.save("failed: stray writes")
         return 1
-    if not ok or not out.exists():
-        run.save("failed: no unified list")
+    if not ok or not pair.exists():
+        run.save("failed: no pairing table")
         return 1
-    u = yaml.safe_load(open(out)) or {}
-    errs = check_reconcile(u, outs["spec"], outs["code"])
+    try:
+        pairing = yaml.safe_load(open(pair)) or {}
+    except yaml.YAMLError as e:
+        run.event("invalid", problem=f"pairing does not parse: {e}")
+        run.save("failed: pairing does not parse")
+        return 1
+    errs = check_pairing(pairing, outs["spec"], outs["code"])
     if errs:
         for e in errs:
             run.event("invalid", problem=e)
         run.save("failed: reconciliation integrity")
         return 1
-    u.setdefault("component", a.component)
-    u["pin"] = pin
-    u.setdefault("interface_methods", methods)
+    if str(pairing.get("driver_pin")) != pin:               # driver-owned stamp: checked at this commit
+        pairing["driver_pin"] = pin
+        yaml.safe_dump(pairing, open(pair, "w"), sort_keys=False, allow_unicode=True, width=110)
+    u = build_unified(pairing, outs["spec"], outs["code"], a.component, pin, methods, factories)
+    errs = check_reconcile(u, outs["spec"], outs["code"])          # belt and braces on the built list
+    if errs:
+        for e in errs:
+            run.event("invalid", problem=e)
+        run.save("failed: built list integrity")
+        return 1
     yaml.safe_dump(u, open(out, "w"), sort_keys=False, allow_unicode=True, width=110)
-    oc = collections_count([str(p.get("origin")) for p in u["properties"] if p.get("verifiable")])
+    oc = u["counts"]["origins"]
     run.rec["origins"] = oc
     run.event("reconciled", records=len(u["properties"]), **{k.replace("+", "_").replace("-", "_"): v for k, v in oc.items()})
     run.save("extracted")
@@ -682,8 +831,8 @@ def selfcheck(kind, args):
         if kind == "extraction":
             _, errs = check_extraction(args[0])
         elif kind == "reconcile":
-            u = yaml.safe_load(open(args[0])) or {}
-            errs = check_reconcile(u, yaml.safe_load(open(args[1])) or {}, yaml.safe_load(open(args[2])) or {})
+            errs = check_pairing(yaml.safe_load(open(args[0])) or {}, yaml.safe_load(open(args[1])) or {},
+                                 yaml.safe_load(open(args[2])) or {})
         elif kind == "classify":
             got = yaml.safe_load(open(args[0])) or {}
             d = yaml.safe_load(open(args[1])) or {}
@@ -730,6 +879,7 @@ def main():
     ex.add_argument("checkout"); ex.add_argument("component")
     ex.add_argument("--dry-run", action="store_true"); ex.add_argument("--model", default=None)
     ex.add_argument("--timeout", type=int, default=3600)
+    ex.add_argument("--fresh", action="store_true", help="re-run both readers even if lists from this commit exist")
     pv = sub.add_parser("prove")
     pv.add_argument("checkout"); pv.add_argument("component")
     pv.add_argument("--tool", choices=sorted(TOOLS), required=True)
