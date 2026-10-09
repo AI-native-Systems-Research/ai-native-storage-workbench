@@ -8,7 +8,8 @@ branch checkout or a SEPT_28 folder) against the CURRENT method and never edits 
 A component is DONE when:
   L1   Level 1 ran: discordances.yaml + level2_excluded exist
   SYNC the input-range ("code assumptions") check ran: `domain_discordances` is present (an empty list is fine)
-  CLS  the Level-1 classifier ran (`classification`), or there were no candidates to classify
+  CLS  every current Level-1 candidate has a classification (or there are none)
+  REPROVE no property waits to be re-proved under a newly declared code assumption (`level2_reprove`)
   SCR  every Level-2 property has a scorer-owned status for every tool that is not withheld by a tool_note
   UNR  no Level-2 property is UNRESOLVED (or unscored) in a non-withheld tool
   XT   cross-tool check: no property proved by one tool and refuted by the other
@@ -45,8 +46,15 @@ def check(vd):
         miss.append("SYNC: the code-assumption (input-range) check has not run")
     cand = [p for p in d.get("properties", []) if p.get("verifiable")
             and str(p.get("origin", "")) in ("divergent", "spec-only")]
-    if cand and not d.get("classification"):
+    cls = d.get("classification") or {}
+    uncls = [p["id"] for p in cand if p["id"] not in cls]
+    if cand and not cls:
         miss.append(f"CLS: classifier has not run on {len(cand)} candidates")
+    elif uncls:   # e.g. records a later sync check reclassified as divergent (found by the driver, 2026-10-09)
+        miss.append(f"CLS: {len(uncls)} candidate(s) not classified yet (e.g. {uncls[0]})")
+    rp = [x for x in (d.get("level2_reprove") or []) if x]
+    if rp:        # proofs that predate a newly declared code assumption must be re-proved under exactly it
+        miss.append(f"REPROVE: {len(rp)} propert(y/ies) must be re-proved under a new code assumption (e.g. {rp[0]})")
     ex = set(d.get("level2_excluded") or [])
     pol = d.get("polarity") or {}
     l2 = [p for p in d.get("properties", []) if p.get("verifiable") and p.get("id") not in ex

@@ -185,6 +185,108 @@ def step_classify(a):
     return 0
 
 
+AGREED = ("spec+code", "both", "paired")
+DD_KEYS = ("spec_says", "code_does", "code_pointers", "methods", "assume", "assume_rust")
+
+
+def validate_sync(rep, d):
+    """Return a list of problems with a sync report; empty = apply it."""
+    P = {p.get("id"): p for p in d.get("properties", [])}
+    errs = []
+    for r in rep.get("reclassify_divergent") or []:
+        pid = (r or {}).get("id")
+        if pid not in P:
+            errs.append(f"reclassify: unknown id {pid}")
+        elif str(P[pid].get("origin")) not in AGREED:
+            errs.append(f"reclassify: {pid} is origin {P[pid].get('origin')}, not an agreed (spec+code) record")
+        elif not str(r.get("divergence_note", "")).strip():
+            errs.append(f"reclassify: {pid} has no divergence_note")
+    for i, dd in enumerate(rep.get("domain_discordances") or []):
+        miss = [k for k in DD_KEYS if not dd.get(k)]
+        if miss:
+            errs.append(f"code assumption #{i + 1}: missing {miss}")
+    return errs
+
+
+def step_sync(a):
+    """Level-1 sync check: one agent reports -> the driver validates and applies it -> level1 -> page."""
+    checkout, verif, branch = preflight(a.checkout, a.component)
+    run = Run(verif, "sync")
+    run.event("start", component=a.component, branch=branch, checkout_commit=commit_of(checkout))
+    import yaml
+    bundle = verif / "unified_properties.yaml"
+    d = yaml.safe_load(open(bundle))
+    comp_dir = checkout / "components" / a.component
+    out = verif / ".run" / "sync_check.yaml"
+    prompt = (PROMPTS / "sync.md").read_text().format(
+        component=a.component, out=out, bundle=bundle, specs=comp_dir / "specs", src=comp_dir / "src",
+        interfaces=checkout / "components" / "interfaces" / "src", spec_props=verif / "spec_properties.yaml",
+        code_props=verif / "code_properties.yaml",
+        skill=FV / "skills" / "build-property-inventory" / "SKILL.md")
+    (run.dir / "prompt_sync.md").write_text(prompt)
+    run.rec["prompt_sync_sha256"] = hashlib.sha256(prompt.encode()).hexdigest()[:16]
+    if a.dry_run:
+        run.event("dry-run", would_write=out)
+        run.save("dry run")
+        return 0
+    before = set(changed_files(checkout))
+    ok, text, dt = agent(prompt, checkout, ["Read", "Grep", "Glob", "Write"], model=a.model,
+                         timeout=a.timeout, log=run.dir / "agent_sync.log")
+    run.event("agent", ok=ok, seconds=dt)
+    stray = [f for f in set(changed_files(checkout)) - before if "/.run/" not in f]
+    if stray:
+        run.event("FAIL", reason="agent wrote outside its output file", files=stray[:10])
+        run.save("failed: stray writes")
+        return 1
+    if not ok or not out.exists():
+        run.event("FAIL", reason="no sync report", detail=text[-300:])
+        run.save("failed: no report")
+        return 1
+    try:
+        rep = yaml.safe_load(open(out)) or {}
+    except yaml.YAMLError as e:
+        run.event("FAIL", reason=f"report does not parse: {e}")
+        run.save("failed: bad report")
+        return 1
+    errs = validate_sync(rep, d)
+    if errs:
+        for e in errs:
+            run.event("invalid", problem=e)
+        run.save("failed: report invalid")
+        return 1
+    # APPLY - the driver is the single writer of the bundle
+    P = {p.get("id"): p for p in d.get("properties", [])}
+    for r in rep.get("reclassify_divergent") or []:
+        P[r["id"]]["origin"] = "divergent"
+        P[r["id"]]["divergence_note"] = r["divergence_note"]
+    existing = {str(x.get("assume_rust")).strip() for x in d.get("domain_discordances") or []}
+    new = [x for x in rep.get("domain_discordances") or [] if str(x["assume_rust"]).strip() not in existing]
+    d["domain_discordances"] = list(d.get("domain_discordances") or []) + new
+    yaml.safe_dump(d, open(bundle, "w"), sort_keys=False, allow_unicode=True, width=110)
+    run.event("applied", reclassified=len(rep.get("reclassify_divergent") or []), new_code_assumptions=len(new))
+    for script in ("level1.py", "render_discordances.py"):
+        p = gate(script, verif)
+        (run.dir / f"{script}.out").write_text(p.stdout + p.stderr)
+        run.event(script, rc=p.returncode, tail=p.stdout.strip().splitlines()[-1][:120] if p.stdout.strip() else "")
+        if p.returncode != 0:
+            run.save(f"failed: {script}")
+            return 1
+    # properties now under a new code assumption must be re-proved under exactly it (the prove step)
+    meths = {m for x in new for m in x.get("methods") or []}
+    dep = [p["id"] for p in d["properties"] if p.get("verifiable") and set(p.get("methods") or []) & meths
+           and any((p.get(t) or {}).get("status") == "proved" for t in ("creusot", "kani"))]
+    run.rec["dependents_to_reprove"] = dep
+    if dep:   # recorded in the bundle so check_done cannot say DONE until they are re-proved (prove step clears it)
+        d2 = yaml.safe_load(open(bundle))
+        d2["level2_reprove"] = sorted(set(d2.get("level2_reprove") or []) | set(dep))
+        yaml.safe_dump(d2, open(bundle, "w"), sort_keys=False, allow_unicode=True, width=110)
+    run.event("dependents", to_reprove=len(dep))
+    ok, outtxt = step_check(a.checkout, a.component, quiet=True)
+    run.save("synced" + (" - DONE" if ok else ""))
+    print(outtxt.strip())
+    return 0
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -192,12 +294,18 @@ def main():
     c.add_argument("checkout"); c.add_argument("component")
     c.add_argument("--dry-run", action="store_true"); c.add_argument("--model", default=None)
     c.add_argument("--timeout", type=int, default=1800)
+    s = sub.add_parser("sync")
+    s.add_argument("checkout"); s.add_argument("component")
+    s.add_argument("--dry-run", action="store_true"); s.add_argument("--model", default=None)
+    s.add_argument("--timeout", type=int, default=2400)
     k = sub.add_parser("check")
     k.add_argument("checkout"); k.add_argument("component")
     a = ap.parse_args()
     if a.cmd == "check":
         ok, _ = step_check(a.checkout, a.component)
         return 0 if ok else 1
+    if a.cmd == "sync":
+        return step_sync(a)
     return step_classify(a)
 
 
