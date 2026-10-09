@@ -2,6 +2,9 @@
 
 One line per push, newest first. Details are in the commit messages (`git log -- fv/`).
 
+- 2026-10-09 - fv/driver `prove` step (one tool at a time; agent writes, scorer decides) + per-tool re-prove list;
+  scorer finds proof modules inside impl blocks; driver stops cleanly when an agent fails. Tested on logger: all 16
+  Creusot re-proofs and its A row proved.
 - 2026-10-09 - fv/driver `sync` step (code-assumption check: an agent reports, the driver validates and applies);
   check_done now also fails on unclassified candidates and on proofs that predate a new code assumption.
 - 2026-10-09 - fv/driver: first step of the Python orchestrator - `classify` (two independent classifier agents ->
