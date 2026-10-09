@@ -72,11 +72,39 @@ class Run:
         print(f"provenance: {self.dir / 'provenance.json'}")
 
 
-def agent(prompt, cwd, allowed_tools, model=None, timeout=1800, log=None):
-    """Run ONE Claude agent headless (claude -p) and return (ok, text, seconds).
+FORBID_CMD = [r"\bgit\s+(push|commit|reset|checkout|switch|rebase)\b", r"cargo\s+creusot\s+clean",
+              r"\brm\s+-rf\s+/(\s|$)", r"\bsudo\b"]
+
+
+def hook_settings(policy, workdir, rundir, name):
+    """Write this step's guard/stop policy and the Claude Code settings that attach our hooks (fv/driver/hooks.py)."""
+    rundir = Path(rundir); rundir.mkdir(parents=True, exist_ok=True)
+    pol = dict(policy); pol.setdefault("workdir", str(workdir)); pol.setdefault("max_stop_blocks", 3)
+    pol["forbid_cmd"] = FORBID_CMD + list(pol.get("forbid_cmd") or [])
+    pol["log"] = str(rundir / f"hooks_{name}.jsonl")
+    pp = rundir / f"policy_{name}.json"; pp.write_text(json.dumps(pol, indent=2))
+    hook = f"{sys.executable} {HERE / 'hooks.py'}"
+    settings = {"hooks": {"PreToolUse": [{"matcher": "Write|Edit|MultiEdit|NotebookEdit|Bash|Read|Grep|Glob",
+                                          "hooks": [{"type": "command", "timeout": 30, "command": f"{hook} guard {pp}"}]}]}}
+    if pol.get("stop_check"):
+        settings["hooks"]["Stop"] = [{"hooks": [{"type": "command", "timeout": 900,
+                                                 "command": f"{hook} stop {pp} {rundir / f'stopstate_{name}.json'}"}]}]
+    sp = rundir / f"settings_{name}.json"; sp.write_text(json.dumps(settings, indent=2))
+    return sp
+
+
+def selfcheck_cmd(kind, *args):
+    return [sys.executable, str(HERE / "fv_driver.py"), "selfcheck", kind, *map(str, args)]
+
+
+def agent(prompt, cwd, allowed_tools, model=None, timeout=1800, log=None, policy=None, name="agent"):
+    """Run ONE Claude agent headless (claude -p) and return (ok, text, seconds). With a policy, our guard hook checks
+    every tool call as it happens and our stop hook runs the step's cheap check before the agent may finish.
     Kept in one place on purpose: switching to the Claude Agent SDK later changes only this function."""
     cmd = ["claude", "-p", "--output-format", "json", "--permission-mode", "acceptEdits",
            "--allowedTools", ",".join(allowed_tools)]
+    if policy is not None:
+        cmd += ["--settings", str(hook_settings(policy, cwd, Path(log).parent if log else Path(cwd) / ".fv-hooks", name))]
     if model:
         cmd += ["--model", model]
     t0 = time.time()
@@ -157,8 +185,11 @@ def step_classify(a):
         if a.dry_run:
             run.event("dry-run", agent=n, would_write=out)
             continue
+        other = verif / ".run" / f"classify_run{3 - n}.yaml"
         ok, text, dt = agent(prompt, checkout, ["Read", "Grep", "Glob", "Write"], model=a.model,
-                             timeout=a.timeout, log=run.dir / f"agent_run{n}.log")
+                             timeout=a.timeout, log=run.dir / f"agent_run{n}.log", name=f"classify{n}",
+                             policy={"writable": [str(out)], "hidden": [str(other)],
+                                     "stop_check": selfcheck_cmd("classify", out, verif / "unified_properties.yaml")})
         run.event("agent", n=n, ok=ok, seconds=dt)
         if not ok or not out.exists():
             run.event("FAIL", reason=f"classifier {n} produced no output", detail=text[-300:])
@@ -244,7 +275,8 @@ def step_sync(a):
         return 0
     before = set(changed_files(checkout))
     ok, text, dt = agent(prompt, checkout, ["Read", "Grep", "Glob", "Write"], model=a.model,
-                         timeout=a.timeout, log=run.dir / "agent_sync.log")
+                         timeout=a.timeout, log=run.dir / "agent_sync.log", name="sync",
+                         policy={"writable": [str(out)], "stop_check": selfcheck_cmd("yaml", out)})
     run.event("agent", ok=ok, seconds=dt)
     stray = [f for f in set(changed_files(checkout)) - before if "/.run/" not in f]
     if stray:
@@ -424,7 +456,8 @@ def step_extract(a):
             run.event("dry-run", side=side, sandbox=box, files=sum(1 for x in box.rglob("*") if x.is_file()))
             continue
         ok, text, dt = agent(prompt, box, ["Read", "Grep", "Glob", "Write"], model=a.model, timeout=a.timeout,
-                             log=run.dir / f"agent_{side}.log")
+                             log=run.dir / f"agent_{side}.log", name=f"reader_{side}",
+                             policy={"writable": [str(out)], "stop_check": selfcheck_cmd("extraction", out)})
         run.event("reader", side=side, ok=ok, seconds=dt)
         if not ok or not out.exists():
             run.save(f"failed: {side} reader produced nothing")
@@ -451,7 +484,10 @@ def step_extract(a):
     (run.dir / "prompt_reconcile.md").write_text(prompt)
     before = set(changed_files(checkout))
     ok, text, dt = agent(prompt, checkout, ["Read", "Grep", "Glob", "Write"], model=a.model, timeout=a.timeout,
-                         log=run.dir / "agent_reconcile.log")
+                         log=run.dir / "agent_reconcile.log", name="reconcile",
+                         policy={"writable": [str(out)],
+                                 "stop_check": selfcheck_cmd("reconcile", out, verif / "spec_properties.yaml",
+                                                             verif / "code_properties.yaml")})
     run.event("reconcile", ok=ok, seconds=dt)
     stray = [f for f in set(changed_files(checkout)) - before
              if not f.endswith(("verif/unified_properties.yaml", "spec_properties.yaml", "code_properties.yaml"))
@@ -548,8 +584,11 @@ def step_prove(a):
     if a.score_only:   # resume: the agent's artifacts are already in the crate
         run.event("score-only", note="agent not re-run")
     else:
+        wr = [str(crate) + "/**", str(advisory)] if crate != comp_dir else [str(comp_dir / "src" / "verification") + "*.rs", str(advisory)]
         ok, text, dt = agent(prompt, checkout, ["Read", "Grep", "Glob", "Write", "Edit", "Bash"], model=a.model,
-                             timeout=a.timeout, log=run.dir / "agent_prove.log")
+                             timeout=a.timeout, log=run.dir / "agent_prove.log", name=f"prove_{a.tool}",
+                             policy={"writable": wr, "hidden": [str(checkout / "components" / "*" / "verif" / "*_scoring.html")],
+                                     "stop_check": selfcheck_cmd("prove", crate, ",".join(ids))})
         run.event("agent", ok=ok, seconds=dt)
         if not ok:   # STOP before folding: folding strips the tool's statuses, which only a real scoring may replace
             run.event("FAIL", reason="agent did not finish", detail=text[-300:])
@@ -634,7 +673,49 @@ def collections_count(xs):
     return out
 
 
+def selfcheck(kind, args):
+    """The stop hooks' cheap checks (seconds). Exit 0 = the agent may finish; otherwise print why."""
+    import yaml
+    try:
+        if kind == "yaml":
+            yaml.safe_load(open(args[0])); return 0
+        if kind == "extraction":
+            _, errs = check_extraction(args[0])
+        elif kind == "reconcile":
+            u = yaml.safe_load(open(args[0])) or {}
+            errs = check_reconcile(u, yaml.safe_load(open(args[1])) or {}, yaml.safe_load(open(args[2])) or {})
+        elif kind == "classify":
+            got = yaml.safe_load(open(args[0])) or {}
+            d = yaml.safe_load(open(args[1])) or {}
+            want = [p["id"] for p in d.get("properties", []) if p.get("verifiable")
+                    and str(p.get("origin", "")) in ("divergent", "spec-only")]
+            errs = [f"no verdict for {i}" for i in want if i not in got][:20]
+            errs += [f"{i}: class {v.get('class')!r} is not A/B/C" for i, v in got.items()
+                     if not isinstance(v, dict) or v.get("class") not in ("A", "B", "C")][:20]
+            errs += [f"{i}: A/B without file:line evidence" for i, v in got.items()
+                     if isinstance(v, dict) and v.get("class") in ("A", "B") and not v.get("evidence")][:20]
+        elif kind == "prove":
+            crate, ids = Path(args[0]), [i for i in args[1].split(",") if i]
+            text = "\n".join(f.read_text(errors="replace") for f in crate.rglob("*.rs") if "/target/" not in str(f))
+            errs = []
+            for i in ids:
+                h = "verify_" + i.lower().replace("-", "_")
+                if h not in text and ("refute_" + i.lower().replace("-", "_")) not in text:
+                    errs.append(f"{i}: no {h} (or refute_) in the crate")
+                elif h in text and (h + "__mutant") not in text:
+                    errs.append(f"{i}: {h} has no {h}__mutant twin")
+        else:
+            errs = [f"unknown check {kind}"]
+    except (OSError, yaml.YAMLError) as e:
+        errs = [f"cannot read: {e}"]
+    for e in errs:
+        print(e)
+    return 1 if errs else 0
+
+
 def main():
+    if len(sys.argv) > 2 and sys.argv[1] == "selfcheck":
+        return selfcheck(sys.argv[2], sys.argv[3:])
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
     c = sub.add_parser("classify")
