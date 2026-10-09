@@ -45,8 +45,9 @@ def commit_of(path):
 
 def changed_files(repo):
     """Tracked modifications + untracked files, relative to the repo root."""
-    out = git(repo, "status", "--porcelain", "--untracked-files=all", check=False)
-    return sorted(line[3:].strip() for line in out.splitlines() if line.strip())
+    # NOT git(): its .strip() would eat the first line's leading status space and shift every path by one
+    out = sh(["git", "-C", str(repo), "status", "--porcelain", "--untracked-files=all"], check=False).stdout
+    return sorted(line[3:] for line in out.splitlines() if len(line) > 3)
 
 
 class Run:
@@ -325,8 +326,7 @@ def step_prove(a):
     P = {p["id"]: p for p in d["properties"]}
     cls = d.get("classification") or {}
     ex = set(d.get("level2_excluded") or [])
-    a_rows = [k for k, v in cls.items() if v.get("class") == "A" and k in P and k not in ex
-              and not (P[k].get(a.tool) or {}).get("_scored_by")]
+    a_rows = [k for k, v in cls.items() if v.get("class") == "A" and k in P and k not in ex]   # always re-scored
     rp = reprove_map(d).get(a.tool, [])
     ids = sorted(set(a.ids.split(",")) if a.ids else set(a_rows) | set(rp))
     ids = [i for i in ids if i in P and i not in ex]
@@ -341,8 +341,11 @@ def step_prove(a):
     assumptions = "\n".join(f"- {x.get('id')}: {x.get('assume')}  [assume_rust: {x.get('assume_rust')}]"
                             for x in d.get("level2_assumptions") or []) or "(none)"
     idlines = "\n".join(f"- {i}{'   (RE-PROOF under a new code assumption)' if i in rp else ''}" for i in ids)
+    where = (f"{crate}" if crate != comp_dir else
+             f"{comp_dir}/src/verification.rs ONLY (the #[cfg(kani)] harness file; every other file under src/ is "
+             f"production code you must not touch)")
     prompt = (PROMPTS / "prove.md").read_text().format(
-        tool_name=T["name"], component=a.component, skill=FV / "skills" / T["skill"] / "SKILL.md", crate=crate,
+        tool_name=T["name"], component=a.component, skill=FV / "skills" / T["skill"] / "SKILL.md", crate=where,
         advisory=advisory, bundle=bundle, ids=idlines, assumptions=assumptions)
     (run.dir / "prompt_prove.md").write_text(prompt)
     run.rec["prompt_sha256"] = hashlib.sha256(prompt.encode()).hexdigest()[:16]
@@ -352,12 +355,15 @@ def step_prove(a):
         run.save("dry run")
         return 0
     before = set(changed_files(checkout))
-    ok, text, dt = agent(prompt, checkout, ["Read", "Grep", "Glob", "Write", "Edit", "Bash"], model=a.model,
-                         timeout=a.timeout, log=run.dir / "agent_prove.log")
-    run.event("agent", ok=ok, seconds=dt)
+    if a.score_only:   # resume: the agent's artifacts are already in the crate
+        run.event("score-only", note="agent not re-run")
+    else:
+        ok, text, dt = agent(prompt, checkout, ["Read", "Grep", "Glob", "Write", "Edit", "Bash"], model=a.model,
+                             timeout=a.timeout, log=run.dir / "agent_prove.log")
+        run.event("agent", ok=ok, seconds=dt)
     # an agent may write only in its proof crate, its advisory file, run logs and the creusot-std link.
-    # With the older Kani layout (harnesses inside the component) production files under src/ may change ONLY
-    # by #[cfg(kani)] additions - that case is not allowed here yet, so any src/ change fails the step.
+    # Older Kani layout (harnesses inside the component, e.g. logger): ONLY the harness file src/verification*.rs
+    # may change - any other file under src/ is production code and fails the step.
     rel_crate = str(crate.relative_to(checkout)).rstrip("/") + "/"
     rel_adv = str(advisory.relative_to(checkout))
     def allowed(f):
@@ -365,7 +371,7 @@ def step_prove(a):
             return True
         if crate != comp_dir:
             return f.startswith(rel_crate)
-        return False
+        return f.startswith(rel_crate + "src/verification") and f.endswith(".rs")
     stray = sorted(f for f in set(changed_files(checkout)) - before if not allowed(f))
     if stray:
         run.event("FAIL", reason="agent wrote outside the proof crate / advisory", files=stray[:10])
@@ -446,6 +452,7 @@ def main():
     pv.add_argument("--tool", choices=sorted(TOOLS), required=True)
     pv.add_argument("--ids", default=None, help="comma-separated ids (default: A rows + this tool's re-prove list)")
     pv.add_argument("--dry-run", action="store_true"); pv.add_argument("--model", default=None)
+    pv.add_argument("--score-only", action="store_true", help="skip the agent; fold + score what is in the crate")
     pv.add_argument("--timeout", type=int, default=7200, help="agent time box, seconds")
     pv.add_argument("--score-timeout", type=int, default=14400, help="scorer time box, seconds")
     k = sub.add_parser("check")

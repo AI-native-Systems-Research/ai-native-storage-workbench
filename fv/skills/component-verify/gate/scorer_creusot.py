@@ -289,12 +289,17 @@ def find_coma_modules(crate_dir):
     "no generated proof module … absence is not a tool limit" — blaming the proving agent for a
     glob's depth assumption. Walking the tree costs nothing and removes the trap.
     """
+    # Keyed by basename AND by path inside the _rlib dir: a proof that relies on a method of an impl block
+    # names it as "impl_LoggerM/error" (that is also how `cargo creusot impl_LoggerM/error` addresses it).
+    # Basename-only lookup scored 9 correct logger re-proofs UNRESOLVED (2026-10-09, driver test).
     names = set()
     for root in glob.glob(os.path.join(crate_dir, "verif", "*_rlib")):
         for dirpath, _dirnames, filenames in os.walk(root):
             for f in filenames:
                 if f.endswith(".coma"):
                     names.add(os.path.splitext(f)[0])
+                    rel = os.path.relpath(os.path.join(dirpath, f), root)
+                    names.add(os.path.splitext(rel)[0].replace(os.sep, "/"))
     return names
 
 
