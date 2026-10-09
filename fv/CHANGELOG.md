@@ -2,6 +2,9 @@
 
 One line per push, newest first. Details are in the commit messages (`git log -- fv/`).
 
+- 2026-10-09 - fv/agent: the FV agent (`verify`: extract -> sync -> classify -> prove -> check, a bounded
+  supervisor, `publish` to local branches) and its runtime (job queue, one worker per machine, budgets, heartbeat,
+  resume, status table). Driver: `extract` step with sandboxed blind readers; `prove --all`.
 - 2026-10-09 - fv/driver `prove` step (one tool at a time; agent writes, scorer decides) + per-tool re-prove list;
   scorer finds proof modules inside impl blocks; driver stops cleanly when an agent fails. Tested on logger: all 16
   Creusot re-proofs and its A row proved.

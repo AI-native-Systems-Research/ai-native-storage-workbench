@@ -304,6 +304,183 @@ def step_sync(a):
     return 0
 
 
+def interface_methods(checkout, component):
+    """The component's public methods: the fn names inside the define_interface! block of the interface it implements."""
+    import re
+    src = checkout / "components" / component / "src"
+    impls = set()
+    for f in src.rglob("*.rs"):
+        impls |= set(re.findall(r"impl\s+(I[A-Z]\w*)\s+for\s+\w+", f.read_text(errors="replace")))
+    methods = []
+    for f in (checkout / "components" / "interfaces" / "src").rglob("*.rs"):
+        t = f.read_text(errors="replace")
+        for name in impls:
+            m = re.search(r"pub\s+" + re.escape(name) + r"\s*\{", t)
+            if not m:
+                continue
+            depth, i = 1, m.end()
+            while i < len(t) and depth:
+                depth += {"{": 1, "}": -1}.get(t[i], 0)
+                i += 1
+            methods += re.findall(r"\bfn\s+([a-z_][a-z0-9_]*)\s*\(", t[m.end():i])
+    return sorted(dict.fromkeys(methods))
+
+
+def id_prefix(component):
+    parts = component.split("-")
+    return (parts[0][:3] if len(parts) == 1 else "".join(p[0] for p in parts)).upper()
+
+
+def sandbox(checkout, component, side):
+    """A throw-away directory holding ONLY one side - blindness enforced by what is on disk, not by a request."""
+    import shutil, tempfile
+    root = Path(tempfile.mkdtemp(prefix=f"fv-{component}-{side}-"))
+    comp = checkout / "components" / component
+    keep = [comp / "specs"] if side == "spec" else [comp / "src", comp / "Cargo.toml"]
+    keep.append(checkout / "components" / "interfaces" / "src")     # the contracts both sides may see
+    for k in keep:
+        if k.exists():
+            dst = root / k.relative_to(checkout)
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            (shutil.copytree if k.is_dir() else shutil.copy2)(k, dst)
+    shutil.copy2(FV / "skills" / "extract-verifiable-properties" / "SKILL.md", root / "EXTRACTION_SKILL.md")
+    return root
+
+
+def check_extraction(path):
+    import yaml
+    d = yaml.safe_load(open(path)) or {}
+    props = d.get("properties") or []
+    ids = [p.get("id") for p in props]
+    c = d.get("counts") or {}
+    errs = []
+    if not props:
+        errs.append("no records")
+    if len(set(ids)) != len(ids):
+        errs.append("duplicate ids")
+    if c.get("total") not in (None, len(props)):
+        errs.append(f"counts.total {c.get('total')} != {len(props)} records")
+    nv = sum(1 for p in props if p.get("verifiable"))
+    if c.get("verifiable") not in (None, nv):
+        errs.append(f"counts.verifiable {c.get('verifiable')} != {nv}")
+    if any(p.get("verifiable") and not str(p.get("statement", "")).strip() for p in props):
+        errs.append("a verifiable record has no statement")
+    return d, errs
+
+
+def check_reconcile(unified, spec, code):
+    """Every input id used in exactly one paired_from; no invented ids; every verifiable record has an origin."""
+    sids = {p["id"] for p in spec.get("properties") or []}
+    cids = {p["id"] for p in code.get("properties") or []}
+    used = {"spec": [], "code": []}
+    for p in unified.get("properties") or []:
+        pf = p.get("paired_from") or p.get("derived_from") or {}
+        for side in ("spec", "code"):
+            v = pf.get(side) or []
+            used[side] += v if isinstance(v, list) else [v]
+    errs = []
+    for side, ids in (("spec", sids), ("code", cids)):
+        u = used[side]
+        if set(u) - ids:
+            errs.append(f"{side}: ids not in the input: {sorted(set(u) - ids)[:5]}")
+        if ids - set(u):
+            errs.append(f"{side}: {len(ids - set(u))} input ids never used (e.g. {sorted(ids - set(u))[0]})")
+        dup = {x for x in u if u.count(x) > 1}
+        if dup:
+            errs.append(f"{side}: ids used more than once: {sorted(dup)[:5]}")
+    bad = [p.get("id") for p in unified.get("properties") or [] if p.get("verifiable")
+           and str(p.get("origin")) not in ("spec+code", "divergent", "spec-only", "code-only")]
+    if bad:
+        errs.append(f"records with no valid origin: {bad[:5]}")
+    return errs
+
+
+def step_extract(a):
+    """Role 1: two BLIND readers in separate sandboxes, then reconcile; the driver checks integrity."""
+    import shutil, yaml
+    checkout = Path(a.checkout).resolve()
+    if not git(checkout, "branch", "--show-current", check=False):
+        raise SystemExit("detached checkout: create a local branch first")
+    verif = checkout / "components" / a.component / "verif"
+    verif.mkdir(parents=True, exist_ok=True)
+    run = Run(verif, "extract")
+    methods = interface_methods(checkout, a.component)
+    pin = commit_of(checkout)
+    run.event("start", component=a.component, pin=pin, interface_methods=len(methods))
+    if not methods:
+        run.event("FAIL", reason="interface methods not found (no define_interface! block for an impl in src/)")
+        run.save("failed: no interface")
+        return 1
+    outs = {}
+    for side, contents, hint in (("spec", "the component's specs/ and the interface definitions", "FR / US / AS / SC ids"),
+                                 ("code", "the component's src/, Cargo.toml and the interface definitions", "file:line")):
+        box = sandbox(checkout, a.component, side)
+        out = box / f"{side}_properties.yaml"
+        prompt = (PROMPTS / "reader.md").read_text().format(
+            side=side, component=a.component, contents=contents, skill=box / "EXTRACTION_SKILL.md",
+            methods=", ".join(methods), prefix=id_prefix(a.component), trace_hint=hint, out=out)
+        (run.dir / f"prompt_{side}.md").write_text(prompt)
+        if a.dry_run:
+            run.event("dry-run", side=side, sandbox=box, files=sum(1 for x in box.rglob("*") if x.is_file()))
+            continue
+        ok, text, dt = agent(prompt, box, ["Read", "Grep", "Glob", "Write"], model=a.model, timeout=a.timeout,
+                             log=run.dir / f"agent_{side}.log")
+        run.event("reader", side=side, ok=ok, seconds=dt)
+        if not ok or not out.exists():
+            run.save(f"failed: {side} reader produced nothing")
+            return 1
+        d, errs = check_extraction(out)
+        if errs:
+            for e in errs:
+                run.event("invalid", side=side, problem=e)
+            run.save(f"failed: {side} extraction invalid")
+            return 1
+        shutil.copy2(out, verif / f"{side}_properties.yaml")
+        outs[side] = d
+        run.event("extracted", side=side, records=len(d["properties"]),
+                  verifiable=sum(1 for p in d["properties"] if p.get("verifiable")))
+        shutil.rmtree(box, ignore_errors=True)
+    if a.dry_run:
+        run.save("dry run")
+        return 0
+    out = verif / "unified_properties.yaml"
+    prompt = (PROMPTS / "reconcile.md").read_text().format(
+        component=a.component, out=out, spec_props=verif / "spec_properties.yaml",
+        code_props=verif / "code_properties.yaml", skill=FV / "skills" / "build-property-inventory" / "SKILL.md",
+        methods=methods, pin=pin)
+    (run.dir / "prompt_reconcile.md").write_text(prompt)
+    before = set(changed_files(checkout))
+    ok, text, dt = agent(prompt, checkout, ["Read", "Grep", "Glob", "Write"], model=a.model, timeout=a.timeout,
+                         log=run.dir / "agent_reconcile.log")
+    run.event("reconcile", ok=ok, seconds=dt)
+    stray = [f for f in set(changed_files(checkout)) - before
+             if not f.endswith(("verif/unified_properties.yaml", "spec_properties.yaml", "code_properties.yaml"))
+             and "/.run/" not in f]
+    if stray:
+        run.event("FAIL", reason="reconcile agent wrote outside its output", files=stray[:10])
+        run.save("failed: stray writes")
+        return 1
+    if not ok or not out.exists():
+        run.save("failed: no unified list")
+        return 1
+    u = yaml.safe_load(open(out)) or {}
+    errs = check_reconcile(u, outs["spec"], outs["code"])
+    if errs:
+        for e in errs:
+            run.event("invalid", problem=e)
+        run.save("failed: reconciliation integrity")
+        return 1
+    u.setdefault("component", a.component)
+    u["pin"] = pin
+    u.setdefault("interface_methods", methods)
+    yaml.safe_dump(u, open(out, "w"), sort_keys=False, allow_unicode=True, width=110)
+    oc = collections_count([str(p.get("origin")) for p in u["properties"] if p.get("verifiable")])
+    run.rec["origins"] = oc
+    run.event("reconciled", records=len(u["properties"]), **{k.replace("+", "_").replace("-", "_"): v for k, v in oc.items()})
+    run.save("extracted")
+    return 0
+
+
 TOOLS = {
     "creusot": {"name": "Creusot", "skill": "tools-verify-creusot-with-properties", "scorer": "scorer_creusot.py",
                 "dir_flag": "--crate-dir", "crate": "verif-creusot", "caps": ["--cap-seconds", "60", "--cap-max", "300"]},
@@ -332,7 +509,16 @@ def step_prove(a):
     ex = set(d.get("level2_excluded") or [])
     a_rows = [k for k, v in cls.items() if v.get("class") == "A" and k in P and k not in ex]   # always re-scored
     rp = reprove_map(d).get(a.tool, [])
-    ids = sorted(set(a.ids.split(",")) if a.ids else set(a_rows) | set(rp))
+    pol = d.get("polarity") or {}
+    unproved = [p["id"] for p in d["properties"] if p.get("verifiable") and p["id"] not in ex
+                and str((pol.get(p["id"]) or {}).get("polarity", "")).upper() != "HAZARD"
+                and not (p.get(a.tool) or {}).get("_scored_by")]
+    if a.ids:
+        ids = sorted(set(a.ids.split(",")))
+    elif getattr(a, "all", False):      # a fresh component: every level-2 property this tool has not scored yet
+        ids = sorted(set(unproved) | set(a_rows) | set(rp))
+    else:
+        ids = sorted(set(a_rows) | set(rp))
     ids = [i for i in ids if i in P and i not in ex]
     run.event("work", a_rows=len(a_rows), reprove=len(rp), total=len(ids))
     if not ids:
@@ -459,10 +645,15 @@ def main():
     s.add_argument("checkout"); s.add_argument("component")
     s.add_argument("--dry-run", action="store_true"); s.add_argument("--model", default=None)
     s.add_argument("--timeout", type=int, default=2400)
+    ex = sub.add_parser("extract")
+    ex.add_argument("checkout"); ex.add_argument("component")
+    ex.add_argument("--dry-run", action="store_true"); ex.add_argument("--model", default=None)
+    ex.add_argument("--timeout", type=int, default=3600)
     pv = sub.add_parser("prove")
     pv.add_argument("checkout"); pv.add_argument("component")
     pv.add_argument("--tool", choices=sorted(TOOLS), required=True)
     pv.add_argument("--ids", default=None, help="comma-separated ids (default: A rows + this tool's re-prove list)")
+    pv.add_argument("--all", action="store_true", help="every level-2 property this tool has not scored yet")
     pv.add_argument("--dry-run", action="store_true"); pv.add_argument("--model", default=None)
     pv.add_argument("--score-only", action="store_true", help="skip the agent; fold + score what is in the crate")
     pv.add_argument("--timeout", type=int, default=7200, help="agent time box, seconds")
@@ -472,6 +663,8 @@ def main():
     a = ap.parse_args()
     if a.cmd == "prove":
         return step_prove(a)
+    if a.cmd == "extract":
+        return step_extract(a)
     if a.cmd == "check":
         ok, _ = step_check(a.checkout, a.component)
         return 0 if ok else 1
