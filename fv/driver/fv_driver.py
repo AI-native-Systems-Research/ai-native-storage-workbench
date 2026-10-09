@@ -185,6 +185,14 @@ def step_classify(a):
     return 0
 
 
+def reprove_map(d):
+    """level2_reprove as {tool: [ids]} (an older plain list means: every tool)."""
+    rp = d.get("level2_reprove") or {}
+    if isinstance(rp, list):
+        return {"creusot": list(rp), "kani": list(rp)}
+    return {t: list(v or []) for t, v in rp.items()}
+
+
 AGREED = ("spec+code", "both", "paired")
 DD_KEYS = ("spec_says", "code_does", "code_pointers", "methods", "assume", "assume_rust")
 
@@ -273,18 +281,153 @@ def step_sync(a):
             return 1
     # properties now under a new code assumption must be re-proved under exactly it (the prove step)
     meths = {m for x in new for m in x.get("methods") or []}
-    dep = [p["id"] for p in d["properties"] if p.get("verifiable") and set(p.get("methods") or []) & meths
-           and any((p.get(t) or {}).get("status") == "proved" for t in ("creusot", "kani"))]
+    # PER TOOL: a property is stale for every tool that had proved it before the assumption existed
+    dep = {t: [p["id"] for p in d["properties"] if p.get("verifiable") and set(p.get("methods") or []) & meths
+               and (p.get(t) or {}).get("status") == "proved"] for t in ("creusot", "kani")}
     run.rec["dependents_to_reprove"] = dep
-    if dep:   # recorded in the bundle so check_done cannot say DONE until they are re-proved (prove step clears it)
+    if any(dep.values()):   # recorded in the bundle so check_done cannot say DONE until the prove step clears it
         d2 = yaml.safe_load(open(bundle))
-        d2["level2_reprove"] = sorted(set(d2.get("level2_reprove") or []) | set(dep))
+        rp = reprove_map(d2)
+        for t, ids in dep.items():
+            rp[t] = sorted(set(rp.get(t, [])) | set(ids))
+        d2["level2_reprove"] = {t: v for t, v in rp.items() if v}
         yaml.safe_dump(d2, open(bundle, "w"), sort_keys=False, allow_unicode=True, width=110)
-    run.event("dependents", to_reprove=len(dep))
+    run.event("dependents", creusot=len(dep["creusot"]), kani=len(dep["kani"]))
     ok, outtxt = step_check(a.checkout, a.component, quiet=True)
     run.save("synced" + (" - DONE" if ok else ""))
     print(outtxt.strip())
     return 0
+
+
+TOOLS = {
+    "creusot": {"name": "Creusot", "skill": "tools-verify-creusot-with-properties", "scorer": "scorer_creusot.py",
+                "dir_flag": "--crate-dir", "crate": "verif-creusot", "caps": ["--cap-seconds", "60", "--cap-max", "300"]},
+    "kani": {"name": "Kani", "skill": "tools-verify-kani-with-properties", "scorer": "scorer_kani.py",
+             "dir_flag": "--component-dir", "crate": "verif-kani", "caps": ["--cap-seconds", "60", "--cap-max", "600"]},
+}
+CREUSOT_STD = os.environ.get("FV_CREUSOT_STD", os.path.expanduser("~/ai-native-storage-certus/tools/creusot/creusot"))
+
+
+def step_prove(a):
+    """Prove the A rows and the re-prove list for ONE tool: agent writes artifacts -> driver folds its advisory ->
+    scorer re-runs exactly those ids -> cross_check -> pages -> re-prove list cleared for what was scored."""
+    import yaml
+    checkout, verif, branch = preflight(a.checkout, a.component)
+    T = TOOLS[a.tool]
+    comp_dir = checkout / "components" / a.component
+    crate = comp_dir / T["crate"]
+    if not crate.is_dir():
+        crate = comp_dir          # older Kani layout: harnesses inside the component itself
+    run = Run(verif, f"prove-{a.tool}")
+    run.event("start", component=a.component, tool=a.tool, branch=branch, crate=crate, checkout_commit=commit_of(checkout))
+    bundle = verif / "unified_properties.yaml"
+    d = yaml.safe_load(open(bundle))
+    P = {p["id"]: p for p in d["properties"]}
+    cls = d.get("classification") or {}
+    ex = set(d.get("level2_excluded") or [])
+    a_rows = [k for k, v in cls.items() if v.get("class") == "A" and k in P and k not in ex
+              and not (P[k].get(a.tool) or {}).get("_scored_by")]
+    rp = reprove_map(d).get(a.tool, [])
+    ids = sorted(set(a.ids.split(",")) if a.ids else set(a_rows) | set(rp))
+    ids = [i for i in ids if i in P and i not in ex]
+    run.event("work", a_rows=len(a_rows), reprove=len(rp), total=len(ids))
+    if not ids:
+        run.save("nothing to prove")
+        return 0
+    if a.tool == "creusot" and not (comp_dir / "creusot").exists() and Path(CREUSOT_STD).exists():
+        os.symlink(CREUSOT_STD, comp_dir / "creusot")          # machine-local creusot-std link (git-excluded)
+        run.event("linked creusot-std", target=CREUSOT_STD)
+    advisory = verif / f"{a.tool}_advisory.yaml"
+    assumptions = "\n".join(f"- {x.get('id')}: {x.get('assume')}  [assume_rust: {x.get('assume_rust')}]"
+                            for x in d.get("level2_assumptions") or []) or "(none)"
+    idlines = "\n".join(f"- {i}{'   (RE-PROOF under a new code assumption)' if i in rp else ''}" for i in ids)
+    prompt = (PROMPTS / "prove.md").read_text().format(
+        tool_name=T["name"], component=a.component, skill=FV / "skills" / T["skill"] / "SKILL.md", crate=crate,
+        advisory=advisory, bundle=bundle, ids=idlines, assumptions=assumptions)
+    (run.dir / "prompt_prove.md").write_text(prompt)
+    run.rec["prompt_sha256"] = hashlib.sha256(prompt.encode()).hexdigest()[:16]
+    run.rec["ids"] = ids
+    if a.dry_run:
+        run.event("dry-run", ids=len(ids))
+        run.save("dry run")
+        return 0
+    before = set(changed_files(checkout))
+    ok, text, dt = agent(prompt, checkout, ["Read", "Grep", "Glob", "Write", "Edit", "Bash"], model=a.model,
+                         timeout=a.timeout, log=run.dir / "agent_prove.log")
+    run.event("agent", ok=ok, seconds=dt)
+    # an agent may write only in its proof crate, its advisory file, run logs and the creusot-std link.
+    # With the older Kani layout (harnesses inside the component) production files under src/ may change ONLY
+    # by #[cfg(kani)] additions - that case is not allowed here yet, so any src/ change fails the step.
+    rel_crate = str(crate.relative_to(checkout)).rstrip("/") + "/"
+    rel_adv = str(advisory.relative_to(checkout))
+    def allowed(f):
+        if f == rel_adv or "/.run/" in f or f.endswith("/creusot"):
+            return True
+        if crate != comp_dir:
+            return f.startswith(rel_crate)
+        return False
+    stray = sorted(f for f in set(changed_files(checkout)) - before if not allowed(f))
+    if stray:
+        run.event("FAIL", reason="agent wrote outside the proof crate / advisory", files=stray[:10])
+        run.save("failed: stray writes")
+        return 1
+    # FOLD the advisory for the listed ids (advisory fields only; an empty value never erases)
+    adv = (yaml.safe_load(open(advisory)) or {}) if advisory.exists() else {}
+    adv = adv.get("properties", adv)
+    d = yaml.safe_load(open(bundle))
+    P = {p["id"]: p for p in d["properties"]}
+    for i in ids:
+        old = P[i].get(a.tool) or {}
+        blk = {"fidelity": old.get("fidelity"), "note": None, "evidence": None}
+        v = adv.get(i) or {}
+        for f in ("fidelity", "note", "delegate_to"):
+            if v.get(f) is not None:
+                blk[f] = v[f]
+        ev = v.get("evidence") or {}
+        keep = {k: ev[k] for k in ("modules", "module", "harness") if ev.get(k)}
+        blk["evidence"] = keep or None
+        P[i][a.tool] = blk                          # status stripped: only the scorer may write it back
+    yaml.safe_dump(d, open(bundle, "w"), sort_keys=False, allow_unicode=True, width=110)
+    run.event("folded advisory", ids=len(ids), with_entry=sum(1 for i in ids if i in adv))
+    # SCORE exactly these ids with the gate shipped next to the driver
+    t0 = time.time()
+    p = sh([sys.executable, str(GATE / T["scorer"]), str(verif), T["dir_flag"], str(crate), *T["caps"],
+            "--resume", "--only", ",".join(ids)], cwd=checkout, check=False, timeout=a.score_timeout)
+    (run.dir / "scorer.out").write_text(p.stdout + p.stderr)
+    summ = [l for l in p.stdout.splitlines() if l.startswith("SUMMARY")]
+    run.event("scorer", rc=p.returncode, seconds=round(time.time() - t0), summary=summ[-1][9:] if summ else "none")
+    if not summ:
+        run.save("failed: scorer produced no SUMMARY")
+        return 1
+    xc = gate("cross_check.py", verif)
+    run.event("cross_check", rc=xc.returncode, tail=xc.stdout.strip().splitlines()[-1] if xc.stdout.strip() else "")
+    for script in ("level1.py", "render_discordances.py", "render_scoring.py"):
+        g = gate(script, verif)
+        (run.dir / f"{script}.out").write_text(g.stdout + g.stderr)
+    # CLEAR the re-prove list for this tool where the scorer now owns a status
+    d = yaml.safe_load(open(bundle))
+    P = {p["id"]: p for p in d["properties"]}
+    rpm = reprove_map(d)
+    left = [i for i in rpm.get(a.tool, []) if not (P.get(i, {}).get(a.tool) or {}).get("_scored_by")]
+    rpm[a.tool] = left
+    d["level2_reprove"] = {t: v for t, v in rpm.items() if v}
+    if not d["level2_reprove"]:
+        d.pop("level2_reprove")
+    yaml.safe_dump(d, open(bundle, "w"), sort_keys=False, allow_unicode=True, width=110)
+    st = collections_count([(P[i].get(a.tool) or {}).get("status") or "open" for i in ids])
+    run.rec["results"] = st
+    run.event("results", **st, reprove_left=len(left))
+    ok_done, out = step_check(a.checkout, a.component, quiet=True)
+    run.save(f"proved {st}" + (" - DONE" if ok_done else ""))
+    print(out.strip())
+    return 0 if xc.returncode == 0 else 1
+
+
+def collections_count(xs):
+    out = {}
+    for x in xs:
+        out[x] = out.get(x, 0) + 1
+    return out
 
 
 def main():
@@ -298,9 +441,18 @@ def main():
     s.add_argument("checkout"); s.add_argument("component")
     s.add_argument("--dry-run", action="store_true"); s.add_argument("--model", default=None)
     s.add_argument("--timeout", type=int, default=2400)
+    pv = sub.add_parser("prove")
+    pv.add_argument("checkout"); pv.add_argument("component")
+    pv.add_argument("--tool", choices=sorted(TOOLS), required=True)
+    pv.add_argument("--ids", default=None, help="comma-separated ids (default: A rows + this tool's re-prove list)")
+    pv.add_argument("--dry-run", action="store_true"); pv.add_argument("--model", default=None)
+    pv.add_argument("--timeout", type=int, default=7200, help="agent time box, seconds")
+    pv.add_argument("--score-timeout", type=int, default=14400, help="scorer time box, seconds")
     k = sub.add_parser("check")
     k.add_argument("checkout"); k.add_argument("component")
     a = ap.parse_args()
+    if a.cmd == "prove":
+        return step_prove(a)
     if a.cmd == "check":
         ok, _ = step_check(a.checkout, a.component)
         return 0 if ok else 1

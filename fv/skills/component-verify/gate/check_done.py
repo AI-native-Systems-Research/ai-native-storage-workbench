@@ -52,9 +52,13 @@ def check(vd):
         miss.append(f"CLS: classifier has not run on {len(cand)} candidates")
     elif uncls:   # e.g. records a later sync check reclassified as divergent (found by the driver, 2026-10-09)
         miss.append(f"CLS: {len(uncls)} candidate(s) not classified yet (e.g. {uncls[0]})")
-    rp = [x for x in (d.get("level2_reprove") or []) if x]
-    if rp:        # proofs that predate a newly declared code assumption must be re-proved under exactly it
-        miss.append(f"REPROVE: {len(rp)} propert(y/ies) must be re-proved under a new code assumption (e.g. {rp[0]})")
+    rpd = d.get("level2_reprove") or {}
+    if isinstance(rpd, list):
+        rpd = {"any tool": rpd}
+    for tool, rp in rpd.items():   # proofs that predate a newly declared code assumption, per tool
+        rp = [x for x in (rp or []) if x]
+        if rp:
+            miss.append(f"REPROVE: {tool}: {len(rp)} propert(y/ies) must be re-proved under a new code assumption (e.g. {rp[0]})")
     ex = set(d.get("level2_excluded") or [])
     pol = d.get("polarity") or {}
     l2 = [p for p in d.get("properties", []) if p.get("verifiable") and p.get("id") not in ex
