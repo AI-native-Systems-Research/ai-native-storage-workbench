@@ -704,13 +704,17 @@ def score_property(p, ctx):
         rok, rout, rwall, rrss, _, _ = run_creusot(
             refute, ctx["crate_dir"], ctx["cap"], mem_mb=ctx["mem_mb"], cap_max=ctx["cap_max"])
         if rok:
+            # The contradiction test is the property's OWN proof module against its negation. Agent evidence may
+            # list the refutation itself (zyre, 2026-10-09: evidence.modules[0] == refute_<id>), which compared the
+            # refutation with itself and filed 5 genuine refutations as "CONTRADICTION".
+            own_mod = own_emitted if own_emitted in present else None
             base_ok = False
-            if all(m in present for m in mods):
+            if own_mod:
                 base_ok, _, _, _, _, _ = run_creusot(
-                    mods[0], ctx["crate_dir"], ctx["cap"], mem_mb=ctx["mem_mb"], escalate=False)
+                    own_mod, ctx["crate_dir"], ctx["cap"], mem_mb=ctx["mem_mb"], escalate=False)
             if base_ok:
-                return "UNRESOLVED", {"modules": mods, "refutation": refute}, (
-                    f"CONTRADICTION: both '{mods[0]}' and its negation '{refute}' proved. The model "
+                return "UNRESOLVED", {"modules": [own_mod], "refutation": refute}, (
+                    f"CONTRADICTION: both '{own_mod}' and its negation '{refute}' proved. The model "
                     f"is unsound (a vacuous precondition or a mis-stated negation) — fix it before "
                     f"any verdict; a defect claim on this footing would not be trustworthy.")
             return "refuted", {"refutation": refute, "result": "Proved (negation)",

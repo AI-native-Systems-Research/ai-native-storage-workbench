@@ -257,7 +257,7 @@ def step_sync(a):
     checkout, verif, branch = preflight(a.checkout, a.component)
     run = Run(verif, "sync")
     run.event("start", component=a.component, branch=branch, checkout_commit=commit_of(checkout))
-    import yaml
+    import shutil, yaml
     bundle = verif / "unified_properties.yaml"
     d = yaml.safe_load(open(bundle))
     comp_dir = checkout / "components" / a.component
@@ -302,8 +302,11 @@ def step_sync(a):
     # APPLY - the driver is the single writer of the bundle
     P = {p.get("id"): p for p in d.get("properties", [])}
     for r in rep.get("reclassify_divergent") or []:
+        P[r["id"]].setdefault("origin_before_level1", P[r["id"]].get("origin"))   # audit: what reconcile said
         P[r["id"]]["origin"] = "divergent"
         P[r["id"]]["divergence_note"] = r["divergence_note"]
+        P[r["id"]]["reclassified_by"] = run.dir.name
+    shutil.copy2(out, run.dir / "sync_check.yaml")              # keep every pass's report, not only the last
     existing = {str(x.get("assume_rust")).strip() for x in d.get("domain_discordances") or []}
     new = [x for x in rep.get("domain_discordances") or [] if str(x["assume_rust"]).strip() not in existing]
     d["domain_discordances"] = list(d.get("domain_discordances") or []) + new
@@ -683,8 +686,11 @@ def step_prove(a):
     T = TOOLS[a.tool]
     comp_dir = checkout / "components" / a.component
     crate = comp_dir / T["crate"]
-    if not crate.is_dir():
-        crate = comp_dir          # older Kani layout: harnesses inside the component itself
+    tracked_harness = git(checkout, "ls-files", f"components/{a.component}/src/verification*.rs", check=False)
+    if a.tool == "kani" and not crate.is_dir() and tracked_harness:
+        crate = comp_dir          # older Kani layout: harnesses committed inside the component itself (e.g. logger)
+    else:
+        crate.mkdir(exist_ok=True)   # a fresh component: the agent creates its proof crate here
     run = Run(verif, f"prove-{a.tool}")
     run.event("start", component=a.component, tool=a.tool, branch=branch, crate=crate, checkout_commit=commit_of(checkout))
     bundle = verif / "unified_properties.yaml"
