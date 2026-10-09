@@ -83,8 +83,12 @@ def agent(prompt, cwd, allowed_tools, model=None, timeout=1800, log=None):
     try:
         # the prompt goes on stdin: --allowedTools takes several values and would swallow a trailing argument
         p = subprocess.run(cmd, input=prompt, cwd=str(cwd), capture_output=True, text=True, timeout=timeout)
-    except subprocess.TimeoutExpired:
-        return False, f"timed out after {timeout} s", round(time.time() - t0)
+    except subprocess.TimeoutExpired as e:
+        dt = round(time.time() - t0)
+        if log:   # keep whatever the agent printed - a timeout is exactly when the log matters most
+            Path(log).write_text(f"$ {' '.join(cmd)} <prompt>\nTIMED OUT after {timeout} s\n\n"
+                                 f"{(e.stdout or b'').decode(errors='replace') if isinstance(e.stdout, bytes) else (e.stdout or '')}")
+        return False, f"timed out after {timeout} s", dt
     dt = round(time.time() - t0)
     text = p.stdout
     try:
@@ -361,6 +365,10 @@ def step_prove(a):
         ok, text, dt = agent(prompt, checkout, ["Read", "Grep", "Glob", "Write", "Edit", "Bash"], model=a.model,
                              timeout=a.timeout, log=run.dir / "agent_prove.log")
         run.event("agent", ok=ok, seconds=dt)
+        if not ok:   # STOP before folding: folding strips the tool's statuses, which only a real scoring may replace
+            run.event("FAIL", reason="agent did not finish", detail=text[-300:])
+            run.save("failed: agent did not finish (statuses left untouched; resume with --score-only once the artifacts are there)")
+            return 1
     # an agent may write only in its proof crate, its advisory file, run logs and the creusot-std link.
     # Older Kani layout (harnesses inside the component, e.g. logger): ONLY the harness file src/verification*.rs
     # may change - any other file under src/ is production code and fails the step.
@@ -404,6 +412,10 @@ def step_prove(a):
     run.event("scorer", rc=p.returncode, seconds=round(time.time() - t0), summary=summ[-1][9:] if summ else "none")
     if not summ:
         run.save("failed: scorer produced no SUMMARY")
+        return 1
+    if "ENVIRONMENT FAILURE" in p.stdout:
+        run.event("FAIL", reason="scorer reports an environment failure (build/layout), not a proof result")
+        run.save("failed: environment")
         return 1
     xc = gate("cross_check.py", verif)
     run.event("cross_check", rc=xc.returncode, tail=xc.stdout.strip().splitlines()[-1] if xc.stdout.strip() else "")
