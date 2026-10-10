@@ -2,6 +2,10 @@
 
 One line per push, newest first. Details are in the commit messages (`git log -- fv/`).
 
+- 2026-10-10 - First unattended fv-agent runs on two never-verified components (zyre, block-device-kernel) and
+  the fixes they forced: jobs run memory-capped (systemd user scope, OOMPolicy=continue), leftover processes
+  swept, no background shells, at most 2 provers at a time, timed-out work still scored, supervisor stops on
+  no progress, fresh components get their own proof crate, scorer contradiction check fixed.
 - 2026-10-09 - fv/agent: the FV agent (`verify`: extract -> sync -> classify -> prove -> check, a bounded
   supervisor, `publish` to local branches) and its runtime (job queue, one worker per machine, budgets, heartbeat,
   resume, status table). Driver: `extract` step with sandboxed blind readers (the reconcile agent writes a pairing

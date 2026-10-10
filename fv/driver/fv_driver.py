@@ -73,6 +73,8 @@ class Run:
 
 
 FORBID_CMD = [r"\bgit\s+(push|commit|reset|checkout|switch|rebase)\b", r"cargo\s+creusot\s+clean",
+              r"\bxargs\b[^|;&]*\s-P\s*([3-9]|\d{2,}|0)\b", r"\bparallel\b\s+-j\s*([3-9]|\d{2,})\b",
+              r"\bcargo\s+kani\b[^|;&]*\s-j\s*([3-9]|\d{2,})\b",   # at most 2 provers at a time (X155)
               r"\brm\s+-rf\s+/(\s|$)", r"\bsudo\b"]
 
 
