@@ -58,6 +58,9 @@ def guard(pol):
             why.append(f"{fp} is hidden from this step")
     if tool == "Bash":
         cmd = inp.get("command", "")
+        if inp.get("run_in_background"):      # its own session: survives the job's budget kill (zyre, 2026-10-09)
+            why.append("background commands are not allowed - run it in the foreground (with a timeout) so "
+                       "nothing keeps running after you stop")
         for rx in pol.get("forbid_cmd") or []:
             if re.search(rx, cmd):
                 why.append(f"command matches a forbidden pattern: {rx}")

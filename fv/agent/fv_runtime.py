@@ -97,22 +97,58 @@ def prepare_checkout(job):
     return co
 
 
+def sweep(job_id):
+    """Kill every process tagged with this job (FV_JOB in its environment) - also those that left the job's
+    process group, e.g. an agent's background shell in its own session (zyre, 2026-10-09: 7 parallel Kani
+    runs kept going after the budget kill). Returns how many were killed."""
+    tag = f"FV_JOB={job_id}".encode()
+    n = 0
+    for d in Path("/proc").iterdir():
+        if not d.name.isdigit() or int(d.name) == os.getpid():
+            continue
+        try:
+            if tag in (d / "environ").read_bytes().split(b"\0"):
+                os.kill(int(d.name), signal.SIGKILL); n += 1
+        except (OSError, ValueError):
+            pass
+    return n
+
+
 def heartbeat(job, step, line):
     job["heartbeat"] = {"at": now(), "pid": os.getpid(), "host": socket.gethostname(), "step": step, "last": line[:200]}
     save(job, "running")
+
+
+def mem_scope(job):
+    """A systemd user scope that caps the WHOLE job's memory (default 60% of RAM, FV_JOB_MEM_PCT). Without it one
+    agent's parallel CBMC runs filled green's 377 GB and the kernel killed the user's systemd manager
+    (2026-10-09 16:45). Fail-closed: no scope, no job."""
+    pct = int(os.environ.get("FV_JOB_MEM_PCT", "60"))
+    total_kb = int(next(l.split()[1] for l in open("/proc/meminfo") if l.startswith("MemTotal:")))
+    cap = f"{total_kb * pct // 100 // 1024}M"
+    probe = subprocess.run(["systemd-run", "--user", "--scope", "--quiet", "-p", "MemoryMax=1G", "true"],
+                           capture_output=True, text=True)
+    if probe.returncode:
+        raise RuntimeError(f"no systemd user scope ({probe.stderr.strip()[:120]}) - refusing to run uncapped; "
+                           f"restore the user manager (log out of every session and back in)")
+    return ["systemd-run", "--user", "--scope", "--quiet", f"--unit=fv-{job['id']}",
+            "-p", f"MemoryMax={cap}", "-p", "MemorySwapMax=0"], cap
 
 
 def run_job(job):
     co = prepare_checkout(job)
     log = Path(co) / "components" / job["component"] / "verif" / ".run" / f"runtime_{job['id']}.log"
     log.parent.mkdir(parents=True, exist_ok=True)
-    cmd = [sys.executable, str(HERE / "fv_agent.py"), "verify", str(co), job["component"], "--tools", job["tools"]]
+    scope, cap = mem_scope(job)
+    cmd = scope + [sys.executable, str(HERE / "fv_agent.py"), "verify", str(co), job["component"], "--tools", job["tools"]]
+    job["mem_cap"] = cap
     job["attempts"] += 1
     job["history"].append({"started": now(), "cmd": " ".join(cmd), "log": str(log)})
     heartbeat(job, "starting", "")
     t0 = time.time()
     with open(log, "a") as fh:
-        proc = subprocess.Popen(cmd, stdout=fh, stderr=subprocess.STDOUT, start_new_session=True)
+        proc = subprocess.Popen(cmd, stdout=fh, stderr=subprocess.STDOUT, start_new_session=True,
+                                env={**os.environ, "FV_JOB": job["id"]})
         step, last = "starting", ""
         while proc.poll() is None:
             time.sleep(30)
@@ -128,13 +164,17 @@ def run_job(job):
             if time.time() - t0 > job["budget_s"]:
                 os.killpg(proc.pid, signal.SIGKILL)   # the whole tree: agents, cargo, provers
                 proc.wait()
-                job["history"][-1].update(ended=now(), outcome=f"budget of {job['budget_s']} s exceeded at step {step}")
+                strays = sweep(job["id"])              # and anything that left the process group
+                job["history"][-1].update(ended=now(), outcome=f"budget of {job['budget_s']} s exceeded at step {step}",
+                                          strays_killed=strays)
                 save(job, "failed")
                 return
+    strays = sweep(job["id"])                          # a finished job leaves nothing running
     out = log.read_text(errors="replace")
     outcome = next((l.split("OUTCOME:", 1)[1].strip() for l in reversed(out.splitlines()) if "OUTCOME:" in l),
                    f"agent exited {proc.returncode} without an outcome line")
-    job["history"][-1].update(ended=now(), rc=proc.returncode, outcome=outcome, seconds=round(time.time() - t0))
+    job["history"][-1].update(ended=now(), rc=proc.returncode, outcome=outcome, seconds=round(time.time() - t0),
+                              strays_killed=strays)
     if outcome.startswith("DONE"):
         p = subprocess.run([sys.executable, str(HERE / "fv_agent.py"), "publish", str(co), job["component"],
                             "--base", job["base"]], capture_output=True, text=True)

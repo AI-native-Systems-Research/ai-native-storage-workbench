@@ -46,31 +46,41 @@ def log(msg):
     print(f"[fv-agent {datetime.now().strftime('%H:%M:%S')}] {msg}", flush=True)
 
 
-def supervise(checkout, component, report, model=None, timeout=900):
-    """One bounded judgement call: what to do about the check_done report."""
+def open_rows(checkout, component):
+    """(id, tool, status, note) of every level-2 property a tool has not closed."""
     import yaml
     verif = Path(checkout) / "components" / component / "verif"
     d = yaml.safe_load(open(verif / "unified_properties.yaml"))
     ex = set(d.get("level2_excluded") or [])
-    open_rows = []
+    rows = []
     for p in d["properties"]:
         if not p.get("verifiable") or p["id"] in ex:
             continue
         for t in ("creusot", "kani"):
             b = p.get(t) or {}
             if not b.get("_scored_by") or b.get("status") not in ("proved", "refuted", "delegated", "tool-boundary"):
-                open_rows.append({"id": p["id"], "tool": t, "status": b.get("status") or "unscored",
-                                  "note": str(b.get("note") or "")[:300]})
+                rows.append({"id": p["id"], "tool": t, "status": b.get("status") or "unscored",
+                             "note": str(b.get("note") or "")[:300]})
+    return rows
+
+
+def supervise(checkout, component, report, history=(), model=None, timeout=900):
+    """One bounded judgement call: what to do about the check_done report."""
+    open_rows_ = open_rows(checkout, component)
+    past = "\n".join(f"- round {h['round']}: {h['decision'].get('action')} {h['decision'].get('tool', '')} "
+                     f"{len(h['decision'].get('ids') or [])} ids -> {h['closed']} of them closed" for h in history)
     prompt = (f"You supervise the formal verification of `{component}`. The definition-of-done check says:\n\n"
               f"{report}\n\nThe properties still open (tool, status, the scorer's note):\n"
-              f"{json.dumps(open_rows[:80], indent=1)}\n\n{MENU}")
+              f"{json.dumps(open_rows_[:80], indent=1)}\n\n"
+              + (f"Earlier rounds:\n{past}\nDo not repeat a retry that closed nothing.\n\n" if past else "")
+              + MENU)
     ok, text, dt = D.agent(prompt, checkout, ["Read", "Grep", "Glob"], model=model, timeout=timeout)
     try:
         j = json.loads(text[text.index("{"): text.rindex("}") + 1])
     except (ValueError, json.JSONDecodeError):
         return {"action": "stop", "why": f"supervisor reply was not valid JSON: {text[:200]}"}
     if j.get("action") == "retry":
-        known = {r["id"] for r in open_rows if r["tool"] == j.get("tool")}
+        known = {r["id"] for r in open_rows_ if r["tool"] == j.get("tool")}
         j["ids"] = [i for i in j.get("ids") or [] if i in known]
         if j.get("tool") not in ("creusot", "kani") or not j["ids"]:
             return {"action": "stop", "why": "supervisor chose a retry with no valid ids/tool"}
@@ -100,17 +110,26 @@ def cmd_verify(a):
     for t in tools:
         if step(f"prove-{t}", "prove", co, c, "--tool", t, "--all", *(["--model", a.model] if a.model else [])):
             log(f"prove {t} did not complete cleanly - the supervisor will see what is open")
+    history = []
     for r in range(1, a.rounds + 1):
         rc, report = drv("check", co, c)
         if rc == 0:
             return finish(record, verif, "DONE", t0)
         log(f"supervisor round {r}")
-        j = supervise(co, c, report, model=a.model)
+        j = supervise(co, c, report, history=history, model=a.model)
+        if j["action"] == "retry" and any(h["decision"].get("tool") == j["tool"] and h["closed"] == 0
+                                          and set(j["ids"]) <= set(h["decision"]["ids"]) for h in history):
+            j = {"action": "stop", "why": f"no progress: an earlier {j['tool']} retry of these ids closed none of them"}
         record["steps"].append({"step": f"supervise-{r}", "decision": j})
         log(f"decision: {json.dumps(j)}")
         if j["action"] == "stop":
             return finish(record, verif, f"stopped by supervisor: {j['why']}", t0)
+        before = {(x["id"], x["tool"]) for x in open_rows(co, c)}
         step(f"retry-{j['tool']}-{r}", "prove", co, c, "--tool", j["tool"], "--ids", ",".join(j["ids"]))
+        after = {(x["id"], x["tool"]) for x in open_rows(co, c)}
+        closed = sum(1 for i in j["ids"] if (i, j["tool"]) in before and (i, j["tool"]) not in after)
+        history.append({"round": r, "decision": j, "closed": closed})
+        log(f"round {r}: {closed} of {len(j['ids'])} retried ids closed")
     rc, report = drv("check", co, c)
     return finish(record, verif, "DONE" if rc == 0 else f"stopped: {a.rounds} supervisor rounds used", t0)
 

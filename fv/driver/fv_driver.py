@@ -736,6 +736,7 @@ def step_prove(a):
         run.save("dry run")
         return 0
     before = set(changed_files(checkout))
+    timed_out = False
     if a.score_only:   # resume: the agent's artifacts are already in the crate
         run.event("score-only", note="agent not re-run")
     else:
@@ -745,10 +746,18 @@ def step_prove(a):
                              policy={"writable": wr, "hidden": [str(checkout / "components" / "*" / "verif" / "*_scoring.html")],
                                      "stop_check": selfcheck_cmd("prove", crate, ",".join(ids))})
         run.event("agent", ok=ok, seconds=dt)
-        if not ok:   # STOP before folding: folding strips the tool's statuses, which only a real scoring may replace
+        if not ok:
+            # Folding strips the tool's statuses, which only a real scoring may replace (X149) - so a timed-out
+            # agent's work is scored ONLY for ids that have no scored status yet: nothing can be lost, and work
+            # already on disk is credited instead of waiting for another full agent run (zyre, 2026-10-09: two
+            # 2 h Kani runs, 84 harnesses on disk, zero scored).
             run.event("FAIL", reason="agent did not finish", detail=text[-300:])
-            run.save("failed: agent did not finish (statuses left untouched; resume with --score-only once the artifacts are there)")
-            return 1
+            ids = [i for i in ids if not (P[i].get(a.tool) or {}).get("_scored_by")]
+            timed_out = True
+            if not ids:
+                run.save("failed: agent did not finish (nothing unscored to score)")
+                return 1
+            run.event("scoring partial work", ids=len(ids))
     # an agent may write only in its proof crate, its advisory file, run logs and the creusot-std link.
     # Older Kani layout (harnesses inside the component, e.g. logger): ONLY the harness file src/verification*.rs
     # may change - any other file under src/ is production code and fails the step.
@@ -816,9 +825,9 @@ def step_prove(a):
     run.rec["results"] = st
     run.event("results", **st, reprove_left=len(left))
     ok_done, out = step_check(a.checkout, a.component, quiet=True)
-    run.save(f"proved {st}" + (" - DONE" if ok_done else ""))
+    run.save(("agent timed out; partial work scored: " if timed_out else "proved ") + f"{st}" + (" - DONE" if ok_done else ""))
     print(out.strip())
-    return 0 if xc.returncode == 0 else 1
+    return 0 if xc.returncode == 0 and not timed_out else 1
 
 
 def collections_count(xs):
