@@ -132,7 +132,10 @@ def mem_scope(job):
         raise RuntimeError(f"no systemd user scope ({probe.stderr.strip()[:120]}) - refusing to run uncapped; "
                            f"restore the user manager (log out of every session and back in)")
     return ["systemd-run", "--user", "--scope", "--quiet", f"--unit=fv-{job['id']}",
-            "-p", f"MemoryMax={cap}", "-p", "MemorySwapMax=0"], cap
+            "-p", f"MemoryMax={cap}", "-p", "MemorySwapMax=0",
+            # a memory kill fails ONE process (one harness); systemd's default OOMPolicy=stop would SIGTERM the
+            # whole job (node7, 2026-10-10 02:31: one CBMC killed at the cap -> the job died before Kani was scored)
+            "-p", "OOMPolicy=continue"], cap
 
 
 def run_job(job):
