@@ -789,7 +789,7 @@ def step_prove(a):
             if v.get(f) is not None:
                 blk[f] = v[f]
         ev = v.get("evidence") or {}
-        keep = {k: ev[k] for k in ("modules", "module", "harness") if ev.get(k)}
+        keep = {k: ev[k] for k in ("modules", "module", "harness", "harnesses") if ev.get(k)}
         blk["evidence"] = keep or None
         P[i][a.tool] = blk                          # status stripped: only the scorer may write it back
     yaml.safe_dump(d, open(bundle, "w"), sort_keys=False, allow_unicode=True, width=110)
@@ -868,8 +868,13 @@ def selfcheck(kind, args):
                 h = "verify_" + i.lower().replace("-", "_")
                 if h not in text and ("refute_" + i.lower().replace("-", "_")) not in text:
                     errs.append(f"{i}: no {h} (or refute_) in the crate")
-                elif h in text and (h + "__mutant") not in text:
+                    continue
+                parts = set(re.findall(re.escape(h) + r"__(?!mutant\b)(\w+?)(?:__mutant)?\b", text))
+                if re.search(r"\bfn\s+" + re.escape(h) + r"\s*\(", text) and (h + "__mutant") not in text:
                     errs.append(f"{i}: {h} has no {h}__mutant twin")
+                for part in sorted(parts):
+                    if f"{h}__{part}__mutant" not in text:
+                        errs.append(f"{i}: split harness {h}__{part} has no {h}__{part}__mutant twin")
         else:
             errs = [f"unknown check {kind}"]
     except (OSError, yaml.YAMLError) as e:

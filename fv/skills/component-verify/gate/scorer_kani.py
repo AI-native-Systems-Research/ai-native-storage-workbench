@@ -172,6 +172,31 @@ def _save_yaml(d, path):
     os.replace(tmp, path)
 
 
+_CONTRACT_FLAGS = {}
+
+
+def contract_flags(component_dir):
+    """`-Z function-contracts` (and `-Z loop-contracts`) only for a crate that USES them. A contract-free crate
+    keeps exactly the flags it was scored with before, so before/after runs stay comparable (F23, X135)."""
+    key = os.path.abspath(component_dir)
+    if key not in _CONTRACT_FLAGS:
+        fc = lc = False
+        for root, _, files in os.walk(component_dir):
+            if "/target" in root:
+                continue
+            for fn in files:
+                if fn.endswith(".rs"):
+                    try:
+                        t = open(os.path.join(root, fn), errors="ignore").read()
+                    except OSError:
+                        continue
+                    fc = fc or bool(re.search(r"kani::(requires|ensures|proof_for_contract|stub_verified|modifies)\b", t))
+                    lc = lc or bool(re.search(r"kani::loop_invariant\b", t))
+        flags = (["-Z", "function-contracts"] if fc else []) + (["-Z", "loop-contracts"] if lc else [])
+        _CONTRACT_FLAGS[key] = flags
+    return list(_CONTRACT_FLAGS[key])
+
+
 def find_harness_names(component_dir):
     """Every #[kani::proof] fn name declared in the crate (any module path leaf)."""
     names = set()
@@ -195,7 +220,8 @@ def find_harness_names(component_dir):
             # `#[kani::stub(path::a, path::b)]` over several lines, and the old one-line-attribute
             # regex then lost the harness. Walk the text instead: after each #[kani::proof], skip
             # whitespace, comments and whole attributes by BRACKET MATCHING, then read `fn NAME`.
-            for m in re.finditer(r"#\[kani::proof\]", txt):
+            # `#[kani::proof_for_contract(f)]` declares a harness too (it proves f's contract).
+            for m in re.finditer(r"#\[kani::proof(?:_for_contract\([^)]*\))?\]", txt):
                 name = _proof_fn_after(txt, m.end())
                 if name:
                     names.add(name)
@@ -383,7 +409,7 @@ def run_kani(harness, component_dir, cap, mem_mb=None, cap_max=None, escalate=Tr
     def once(c):
         unit = _new_unit("kani") if mem_mb else None
         kani_cmd = [time_bin, "-v", "cargo", "kani", "--harness", harness,
-                    "-Z", "stubbing", "--output-format", "terse"] + list(extra or []) \
+                    "-Z", "stubbing", "--output-format", "terse"] + contract_flags(component_dir) + list(extra or []) \
                    + (["--features", CARGO_FEATURES] if CARGO_FEATURES else [])
         if mem_mb:
             cmd = ["systemd-run", "--user", "--scope", "--quiet", f"--unit={unit}",
@@ -552,6 +578,50 @@ def vacuity_check(pid, present, ctx, extra=None):
 
 
 def score_property(p, ctx):
+    """Return (status, evidence_dict, note). A property whose evidence lists several obligation harnesses
+    (`evidence.harnesses`, each named verify_<id>__<part>) is proved only if EVERY part proves under the full
+    single-harness rules AND every part has its own failing twin (verify_<id>__<part>__mutant). Otherwise the
+    single-harness path below decides, unchanged."""
+    pid = p["id"]
+    proposed = p.get("kani") or {}
+    parts = (proposed.get("evidence") or {}).get("harnesses")
+    refute = "refute_" + pid.lower().replace("-", "_")
+    if (isinstance(parts, list) and len(parts) > 1 and refute not in ctx["harnesses"]
+            and not proposed.get("delegate_to") and proposed.get("status") != "delegated"):
+        return score_split(p, parts, ctx)
+    return score_single(p, ctx)
+
+
+def score_split(p, parts, ctx):
+    pid, base = p["id"], harness_id(p["id"])
+    done, wall, rss = [], 0.0, 0
+    for h in parts:
+        leaf = str(h).rsplit("::", 1)[-1]
+        if not leaf.startswith(base + "__") or leaf.endswith("__mutant"):
+            return "UNRESOLVED", {"harnesses": parts}, (
+                f"split harness '{leaf}' is not named {base}__<part>: a property may only be split into its "
+                f"OWN obligation harnesses")
+        if leaf + "__mutant" not in ctx["harnesses"]:
+            return "UNRESOLVED", {"harnesses": parts}, (
+                f"split harness '{leaf}' has no twin '{leaf}__mutant': every obligation harness needs its own "
+                f"anti-vacuity twin")
+        sub = {"id": leaf[len("verify_"):].replace("_", "-").upper(), "kani": {"evidence": {"harness": leaf}}}
+        st, ev, note = score_single(sub, ctx)
+        if st == "BUILD-ERROR":                # an environment fault aborts the stage, split or not
+            return st, ev, note
+        if st != "proved":
+            return "UNRESOLVED", {"harnesses": parts, "failed": leaf}, f"split harness '{leaf}': {st} - {note}"
+        done.append(ev)
+        wall += ev.get("wall_clock_s") or 0
+        rss = max(rss, ev.get("peak_rss_mb") or 0)
+    agg = {"harnesses": parts, "parts": done, "result": "SUCCESS", "wall_clock_s": round(wall, 2), "peak_rss_mb": rss}
+    if any(isinstance(e, dict) and e.get("unwinding_checks") is False for e in done):
+        agg["unwinding_checks"] = False        # the weakest part decides the claim the page makes
+    return "proved", agg, (
+        f"all {len(parts)} obligation harnesses re-run by the scorer -> VERIFICATION SUCCESSFUL, each twin fails")
+
+
+def score_single(p, ctx):
     """Return (status, evidence_dict, note). status in ACCEPT or 'UNRESOLVED'."""
     pid = p["id"]
     proposed = (p.get("kani") or {})

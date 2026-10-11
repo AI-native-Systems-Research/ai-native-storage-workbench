@@ -23,7 +23,10 @@ RULES (strict - a proof that breaks them is not credited):
 4. Call the real code (or the crate's disclosed mirror of it); do not re-type expressions into the proof.
 5. For a property listed for RE-PROOF, replace any old premise with exactly the declared assumption it depends on.
 6. If a property cannot be proved within these rules, leave it unproved and say why in the advisory note.
-7. Machine limits (this machine is shared): run at most 2 prover processes at a time (`-j 2` / `xargs -P 2` at
+7. For Kani: follow the skill's "Small harnesses" section - one harness per obligation (`verify_<id>__<part>`,
+   each with its own failing `__mutant` twin, listed as `evidence.harnesses`), a symbolic start state that
+   satisfies the invariant, tiny bounds, stubs for heavy parts and C calls, contracts only when cheap.
+8. Machine limits (this machine is shared): run at most 2 prover processes at a time (`-j 2` / `xargs -P 2` at
    most), always in the foreground with a timeout, never in the background. Prefer smaller, bounded harnesses over
    one large one: a harness that needs more than ~16 GB or 600 s will not be credited by the scorer anyway.
 

@@ -203,6 +203,40 @@ HashMap-backed component was once mis-recorded as whole-component ⊘ when a one
 - **Reference:** `verif/skills_research/KANI_capability_catalog.md` in the eviction-policy-session-lists
   component carries the full catalog with flags, examples, and soundness costs.
 
+## Small harnesses — build them to FINISH (mandatory; F23, 2026-10-10)
+
+Measured on two components the agent had never seen (zyre, block-device-kernel): 54 of 63 and 59 of 64 open
+Kani cells were time or memory walls. Harnesses that finished were cheap (median 15-42 s, under 2 GB); the
+rest blew past 600 s / 16 GB, and run uncapped they reached 35-117 GB per CBMC process and once took a
+377 GB machine down. The results fall into two groups with almost nothing in between: the limit is how the
+harness is built, not Kani.
+
+1. **One harness per OBLIGATION, not per property.** Obligation = one operation × one precondition case × one
+   postcondition clause. ONE OPERATION = one call to one public method from the assumed start state - never a
+   scenario (create -> start -> join -> shout). A property that covers several methods gets one harness per
+   method; an invariant gets one harness per state-changing method (assume inv, call once, assert inv) plus
+   one for the constructor. Name the parts `verify_<id>__<part>`, each with its own `verify_<id>__<part>__mutant`
+   twin that must FAIL, and list them in the advisory as `evidence.harnesses: [..]`. The scorer credits the
+   property only if EVERY part proves and EVERY twin fails.
+2. **Start from a symbolic state that satisfies the invariant** (`kani::any()` + `kani::assume(inv(..))`), not
+   from construction. Assume only what the prover prompt allows (requirement words, declared code assumptions,
+   an invariant proved inductive for every operation).
+3. **Tiny bounds:** unwind 2-4; collections of 1-3 entries; buffers of a few bytes. Record the bound in the
+   advisory note - a bounded proof is a weaker claim and the page says so.
+4. **Stub the heavy parts:** `RandomState` / hashing, large containers, `format!`, and every C call. A C-call
+   stub models the function's DOCUMENTED semantics (read the header) - it is a trusted assumption, and a wrong
+   one hides real bugs (F22: libzyre's printf-style `zyre_set_header`).
+5. **Contracts only when they are cheap.** A function contract (`#[kani::requires]`/`#[kani::ensures]`, proved
+   with `#[kani::proof_for_contract(f)]`, used through `#[kani::stub_verified(f)]`) lets a caller skip the
+   callee's body; a loop contract (`#[kani::loop_invariant]`) replaces unrolling. The scorer adds
+   `-Z function-contracts` / `-Z loop-contracts` itself when the crate uses them. MEASURED caveat (X135): a
+   contract proof can cost far MORE than a plain harness (buddy alloc: contract proof out of memory at 32 GB,
+   the same obligation as a plain harness 27 s / 0.6 GB). Try a contract when the callee is the expensive
+   part AND its own contract proof is cheap; every `stub_verified` needs its `proof_for_contract` in the crate.
+6. **Budget per harness: ≤ 16 GB and ≤ 600 s** (the scorer's caps - anything larger is not credited). At most
+   2 prover processes at a time, foreground, with a timeout. If a harness exceeds the budget, SPLIT it further
+   (rule 1) before reaching for flags.
+
 ## Harness hygiene the GATE depends on — measured, not theoretical (mandatory)
 
 ### 🔴 Do NOT generate harnesses with `macro_rules!` — the gate cannot see them
