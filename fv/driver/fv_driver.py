@@ -843,7 +843,7 @@ def step_repair(a):
     import shutil, yaml
     checkout, verif, branch = preflight(a.checkout, a.component)
     c, pid = a.component, a.property
-    if git(checkout, "status", "--porcelain", "--", f"components/{c}", check=False):
+    if not a.check_only and git(checkout, "status", "--porcelain", "--", f"components/{c}", check=False):
         raise SystemExit(f"components/{c} has uncommitted changes: commit the base first (the check compares "
                          "against a commit)")
     base = git(checkout, "rev-parse", "HEAD")
@@ -870,50 +870,63 @@ def step_repair(a):
     writable = [str(comp / x) + "/**" for x in ("src", "tests", "verif-creusot", "verif-kani")] + [str(notes) + "/**"]
     env = dict(os.environ, REPAIR_GATE_DIR=str(GATE))
     feedback, t_all, attempts = "", time.time(), []
-    for n in range(1, a.attempts + 1):
-        prompt = (PROMPTS / "repair.md").read_text().format(
-            component=c, property=pid, pid=pid.lower().replace("-", "_"), statement=str(rec.get("statement", "")).strip(),
-            traces=", ".join(map(str, rec.get("traces") or [])), tool_evidence=tools, finding=finding,
-            notes=notes, callees=callees,
-            previous=("" if not feedback else
-                      "\nTHE ACCEPTANCE CHECK REJECTED YOUR PREVIOUS ATTEMPT. Its output (last lines):\n```\n"
-                      + feedback + "\n```\nFix what it reports; keep what already works.\n"))
-        (run.dir / f"prompt_{n}.md").write_text(prompt)
-        before = set(changed_files(checkout))
-        ok, text, dt = agent(prompt, checkout, ["Read", "Grep", "Glob", "Write", "Edit", "Bash"], model=a.model,
-                             timeout=a.timeout, log=run.dir / f"agent_{n}.log", name=f"repair_{n}",
-                             policy={"writable": writable,
-                                     "forbid_add": [],
-                                     "stop_check": selfcheck_cmd("repair", notes)})
-        last = (text or "").strip().splitlines()[-1:] or [""]
-        run.event("agent", attempt=n, ok=ok, seconds=dt, last=last[0][:200])
-        def allowed(f):          # the component's code, tests and proof crates - never its bundle or another component
-            if "/.run/" in f:
-                return True
-            return f.startswith(f"components/{c}/") and not f.startswith(f"components/{c}/verif/") \
-                and not f.startswith(f"components/{c}/specs/")
-        stray = sorted(f for f in set(changed_files(checkout)) - before if not allowed(f))
-        if stray:
-            run.event("FAIL", reason="agent wrote outside the component's code and proof crates", files=stray[:10])
-            run.save("failed: stray writes")
-            return 1
-        verdict = last[0]
-        if "NOT A CODE BUG" in verdict or "BLOCKED" in verdict:
-            run.event("stopped", attempt=n, verdict=verdict[:300])
-            shutil.copy2(notes / "report.md", run.dir / "report.md") if (notes / "report.md").exists() else None
-            # a "not a code bug" / "blocked" verdict is a result too: keep a record of it (NOT committed)
-            attempts.append({"attempt": n, "agent_s": dt, "oracle_s": 0, "rc": None})
-            fixes = verif / "fixes"
-            fixes.mkdir(exist_ok=True)
-            fix = fixes / f"fix_{c}_{finding}.md"
-            fix.write_text(fix_record(c, finding, pid, rec, base, branch, attempts, time.time() - t_all,
-                                      notes / "report.md", run.dir / "no-oracle.txt", callees,
-                                      status="NOT a code bug / needs a design decision" if "NOT A CODE BUG" in verdict
-                                      else "BLOCKED by the environment"))
-            if os.environ.get("FV_FIXES_DIR"):
-                shutil.copy2(fix, Path(os.environ["FV_FIXES_DIR"]) / fix.name)
-            run.save(f"stopped by the agent: {verdict[:200]}")
-            return 1
+    if a.check_only:
+        # re-judge a repair already on disk (e.g. after a fix to the check itself): no agent; the notes come from
+        # the latest earlier run of this finding
+        prev = sorted((x for x in (verif / ".run" / "driver").glob(f"*repair-{finding}") if x != run.dir
+                       and (x / "agent" / "report.md").exists()), key=lambda x: x.name)
+        if not prev:
+            raise SystemExit("--check-only: no earlier run of this finding with a report")
+        for f in ("problem.md", "report.md"):
+            if (prev[-1] / "agent" / f).exists():
+                shutil.copy2(prev[-1] / "agent" / f, notes / f)
+        run.event("check-only", notes_from=prev[-1].name)
+    for n in range(1, (1 if a.check_only else a.attempts) + 1):
+        dt = 0
+        if not a.check_only:
+            prompt = (PROMPTS / "repair.md").read_text().format(
+                component=c, property=pid, pid=pid.lower().replace("-", "_"), statement=str(rec.get("statement", "")).strip(),
+                traces=", ".join(map(str, rec.get("traces") or [])), tool_evidence=tools, finding=finding,
+                notes=notes, callees=callees,
+                previous=("" if not feedback else
+                          "\nTHE ACCEPTANCE CHECK REJECTED YOUR PREVIOUS ATTEMPT. Its output (last lines):\n```\n"
+                          + feedback + "\n```\nFix what it reports; keep what already works.\n"))
+            (run.dir / f"prompt_{n}.md").write_text(prompt)
+            before = set(changed_files(checkout))
+            ok, text, dt = agent(prompt, checkout, ["Read", "Grep", "Glob", "Write", "Edit", "Bash"], model=a.model,
+                                 timeout=a.timeout, log=run.dir / f"agent_{n}.log", name=f"repair_{n}",
+                                 policy={"writable": writable,
+                                         "forbid_add": [],
+                                         "stop_check": selfcheck_cmd("repair", notes)})
+            last = (text or "").strip().splitlines()[-1:] or [""]
+            run.event("agent", attempt=n, ok=ok, seconds=dt, last=last[0][:200])
+            def allowed(f):          # the component's code, tests and proof crates - never its bundle or another component
+                if "/.run/" in f:
+                    return True
+                return f.startswith(f"components/{c}/") and not f.startswith(f"components/{c}/verif/") \
+                    and not f.startswith(f"components/{c}/specs/")
+            stray = sorted(f for f in set(changed_files(checkout)) - before if not allowed(f))
+            if stray:
+                run.event("FAIL", reason="agent wrote outside the component's code and proof crates", files=stray[:10])
+                run.save("failed: stray writes")
+                return 1
+            verdict = last[0]
+            if "NOT A CODE BUG" in verdict or "BLOCKED" in verdict:
+                run.event("stopped", attempt=n, verdict=verdict[:300])
+                shutil.copy2(notes / "report.md", run.dir / "report.md") if (notes / "report.md").exists() else None
+                # a "not a code bug" / "blocked" verdict is a result too: keep a record of it (NOT committed)
+                attempts.append({"attempt": n, "agent_s": dt, "oracle_s": 0, "rc": None})
+                fixes = verif / "fixes"
+                fixes.mkdir(exist_ok=True)
+                fix = fixes / f"fix_{c}_{finding}.md"
+                fix.write_text(fix_record(c, finding, pid, rec, base, branch, attempts, time.time() - t_all,
+                                          notes / "report.md", run.dir / "no-oracle.txt", callees,
+                                          status="NOT a code bug / needs a design decision" if "NOT A CODE BUG" in verdict
+                                          else "BLOCKED by the environment"))
+                if os.environ.get("FV_FIXES_DIR"):
+                    shutil.copy2(fix, Path(os.environ["FV_FIXES_DIR"]) / fix.name)
+                run.save(f"stopped by the agent: {verdict[:200]}")
+                return 1
         t0 = time.time()
         try:
             p = sh(["bash", str(REPAIR / "repair_accept_repo.sh"), str(checkout), base, "--target", target],
@@ -1100,6 +1113,7 @@ def main():
     r.add_argument("--finding", default=None, help="finding id for the fix record, e.g. F22")
     r.add_argument("--callees", default=None, help="Creusot callee modules (default: from the property's evidence)")
     r.add_argument("--attempts", type=int, default=2); r.add_argument("--model", default=None)
+    r.add_argument("--check-only", action="store_true", help="no agent: re-run the acceptance check on the repair on disk")
     r.add_argument("--timeout", type=int, default=7200, help="agent time box per attempt, seconds")
     r.add_argument("--oracle-timeout", type=int, default=10800, help="acceptance check time box, seconds")
     k = sub.add_parser("check")

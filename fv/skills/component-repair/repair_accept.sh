@@ -59,6 +59,17 @@ if [[ -z "$added" ]]; then
   echo "  2b RED-FIRST: NO — no regression test file components/$COMP/src/**/repair_test_*.rs"; fail=1
 else
   TMPR="$(mktemp -d)"; git -C "$REPO" worktree add -q --detach "$TMPR/base" "$BASE"
+  # The clean copy needs the same native libraries as the repository (gitignored build products such as
+  # deps/spdk): without them a crate like spdk-sys fails its build script and the test is wrongly reported
+  # as "does not compile" (dispatch-map, 2026-10-12 - two correct attempts rejected this way).
+  for n in spdk spdk-build zyre-build; do
+    for src in "$REPO/deps/$n" "${CERTUS_DEPS_DIR:-/opt}/$n"; do
+      [[ -e "$TMPR/base/deps/$n" ]] && break
+      [[ -e "$src" ]] && ln -s "$(readlink -f "$src")" "$TMPR/base/deps/$n" && break
+    done
+  done
+  [[ -e "$REPO/components/$COMP/creusot" && ! -e "$TMPR/base/components/$COMP/creusot" ]] && \
+    ln -s "$(readlink -f "$REPO/components/$COMP/creusot")" "$TMPR/base/components/$COMP/creusot"
   rf_ok=1
   for t in $added; do
     b="$(basename "$t")"
@@ -70,7 +81,12 @@ else
   done
   if (( rf_ok )); then
     bout="$(cd "$TMPR/base" && timeout 1800 cargo test -q -p "$PKG" repair_test_ 2>&1)"
-    if grep -qE 'error(\[E[0-9]+\])?: ' <<<"$bout" && ! grep -q 'test result:' <<<"$bout"; then
+    if grep -qE 'failed to run custom build command|could not find native static library|SPDK .* not found' <<<"$bout" \
+       && ! grep -q 'test result:' <<<"$bout"; then
+      echo "  2b RED-FIRST: ENVIRONMENT — the unfixed code could not be BUILT here (a native library is missing), so the"
+      echo "               test could not be run on it; this is not a verdict on the test"
+      grep -E '^error|panicked at' <<<"$bout" | head -2 | sed 's/^/       │ /'; fail=1
+    elif grep -qE 'error(\[E[0-9]+\])?: ' <<<"$bout" && ! grep -q 'test result:' <<<"$bout"; then
       echo "  2b RED-FIRST: NO — the regression test does not COMPILE against the unfixed code; it must use the existing API"
       grep -E '^error' <<<"$bout" | head -2 | sed 's/^/       │ /'; fail=1
     elif grep -qE 'test result: FAILED\. [0-9]+ passed; [1-9][0-9]* failed' <<<"$bout"; then
