@@ -140,7 +140,8 @@ for c in $TOUCHED; do
     if [[ "$side" == before ]]; then
       CTREE="$(cd "$W" && git ls-files -s "components/$c/verif-creusot/src" "components/$c/verif" 2>/dev/null | sha1sum | cut -c1-12)"
       KEY="$CACHE/${c}_${BSHA:0:12}_${CTREE}_${GHASH}"
-      if [[ -f "$KEY.yaml" && -f "$KEY.log" ]] && grep -q '^SUMMARY:' "$KEY.log"; then
+      if [[ -f "$KEY.yaml" && -f "$KEY.log" ]] && grep -q '^SUMMARY:' "$KEY.log" \
+         && ! grep -qE "^SUMMARY: \{'proved': 0," "$KEY.log"; then
         cp "$KEY.yaml" "$B"; cp "$KEY.log" "$SCR/gate_before.log"
         echo "  E. (before side for $c reused from cache: same base, proof crate and gate)"; continue
       fi
@@ -158,7 +159,11 @@ PY2
         --cap-seconds 60 --cap-max 300 > "$SCR/gate_$side.log" 2>&1
     # keep the log: a re-verification nobody can inspect is not evidence
     LOGS="${REPAIR_GATE_LOG_DIR:-/tmp}"; cp "$SCR/gate_$side.log" "$LOGS/repair_gate_${c}_${side}.log" 2>/dev/null
-    if [[ "$side" == before ]] && grep -q '^SUMMARY:' "$SCR/gate_before.log"; then cp "$B" "$KEY.yaml"; cp "$SCR/gate_before.log" "$KEY.log"; fi
+    # Cache only a baseline that proved something: a before side that proved NOTHING is an environment fault
+    # (block-device-kernel, 2026-10-12: a run with the creusot link missing cached "proved 0", and a later repair
+    # was then "re-verified" against it: "87 newly proved, 0 lost" - vacuous).
+    if [[ "$side" == before ]] && grep -q '^SUMMARY:' "$SCR/gate_before.log" \
+       && ! grep -qE "^SUMMARY: \{'proved': 0," "$SCR/gate_before.log"; then cp "$B" "$KEY.yaml"; cp "$SCR/gate_before.log" "$KEY.log"; fi
   done
   # THE GATE MUST HAVE RUN (2026-10-05). Inside the agent's own run this leg reported "0 proved after;
   # 0 newly proved; 0 lost" and PASSED — the gate had not run on either side, and 0 = 0 read as
@@ -171,6 +176,11 @@ PY2
     fi
   done
   (( ran )) || { fail=1; EVID+=("$c|re-verification (Creusot gate, before vs after)|DID NOT RUN"); git -C "$REPO" worktree remove --force "$SCR/before" 2>/dev/null; rm -rf "$SCR"; continue; }
+  if grep -qE "^SUMMARY: \{'proved': 0," "$SCR/gate_before.log"; then
+    echo "  E. REVERIFY: $c ENVIRONMENT — the gate proved NOTHING on the unfixed code, so 'nothing lost' would be vacuous"
+    echo "               (a proof crate that proves nothing at its own base is an environment fault, e.g. a missing creusot link)"
+    fail=1; EVID+=("$c|re-verification (Creusot gate, before vs after)|BASELINE PROVED NOTHING"); git -C "$REPO" worktree remove --force "$SCR/before" 2>/dev/null; rm -rf "$SCR"; continue
+  fi
   read -r lost gained prov <<<"$(python3 - "$SCR/before/components/$c/verif/unified_properties.yaml" "$SCR/after/components/$c/verif/unified_properties.yaml" <<'PY2'
 import sys, yaml
 st = lambda f: {p["id"]: (p.get("creusot") or {}).get("status") for p in yaml.safe_load(open(f))["properties"]}
