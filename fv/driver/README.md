@@ -15,3 +15,5 @@ Each run writes `components/<c>/verif/.run/driver/<stamp>-<step>/` with the prom
 Steps: `sync` (code-assumption check) and `classify` and `check` (done); next: `prove` (the A rows and the
 properties listed in `level2_reprove`),
 `run` (chain until check_done says DONE).
+
+**Repair:** `fv_driver.py repair` fixes one finding and proves the fix - see [REPAIR.md](REPAIR.md).

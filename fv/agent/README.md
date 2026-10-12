@@ -1,3 +1,5 @@
+**Full description: [FV_AGENT.md](FV_AGENT.md)** (steps, who decides, safety rails, how to run, what we measured).
+
 # fv agent and runtime
 
 **fv_agent.py** verifies one component end to end and stops honestly:
