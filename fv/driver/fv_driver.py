@@ -28,8 +28,8 @@ PROMPTS = HERE / "prompts"
 
 
 # ---------------------------------------------------------------------------------------------------- helpers
-def sh(cmd, cwd=None, check=True, timeout=None):
-    p = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout)
+def sh(cmd, cwd=None, check=True, timeout=None, env=None):
+    p = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout, env=env)
     if check and p.returncode != 0:
         raise SystemExit(f"FAILED ({p.returncode}): {' '.join(map(str, cmd))}\n{p.stdout[-2000:]}\n{p.stderr[-2000:]}")
     return p
@@ -832,6 +832,168 @@ def step_prove(a):
     return 0 if xc.returncode == 0 and not timed_out else 1
 
 
+REPAIR = FV / "skills" / "component-repair"
+REPORT_SECTIONS = ("## Bug", "## Impact", "## How to reproduce", "## Fix", "## Scope beyond the finding", "## Risk")
+
+
+def step_repair(a):
+    """Repair ONE finding: agent explains -> red-first test -> fix -> proof of the fix; the acceptance check
+    (component-repair/repair_accept_repo.sh, outside the agent) decides, at most --attempts times. On acceptance
+    the driver commits locally and writes fix_<component>_<finding>.md. It never pushes."""
+    import shutil, yaml
+    checkout, verif, branch = preflight(a.checkout, a.component)
+    c, pid = a.component, a.property
+    if git(checkout, "status", "--porcelain", "--", f"components/{c}", check=False):
+        raise SystemExit(f"components/{c} has uncommitted changes: commit the base first (the check compares "
+                         "against a commit)")
+    base = git(checkout, "rev-parse", "HEAD")
+    d = yaml.safe_load(open(verif / "unified_properties.yaml"))
+    P = {p["id"]: p for p in d["properties"]}
+    if pid not in P:
+        raise SystemExit(f"{pid} is not in the bundle")
+    rec = P[pid]
+    cre = rec.get("creusot") or {}
+    callees = a.callees or ",".join(m for m in ((cre.get("evidence") or {}).get("modules") or [])
+                                    if not m.startswith(("verify_", "refute_", "lemma_")))
+    if not callees:
+        raise SystemExit("no callee modules known for this property: pass --callees mod1,mod2 (the Creusot modules "
+                         "whose goals the property depends on)")
+    finding = a.finding or pid
+    run = Run(verif, f"repair-{finding}")
+    notes = run.dir / "agent"
+    notes.mkdir(parents=True, exist_ok=True)
+    target = f"{c}:{pid}:{callees}"
+    run.event("start", component=c, property=pid, finding=finding, base=base[:12], branch=branch, target=target)
+    tools = "; ".join(f"{t}: {(rec.get(t) or {}).get('status') or 'unscored'} - "
+                      f"{str((rec.get(t) or {}).get('note') or '')[:300]}" for t in ("creusot", "kani"))
+    comp = checkout / "components" / c
+    writable = [str(comp / x) + "/**" for x in ("src", "tests", "verif-creusot", "verif-kani")] + [str(notes) + "/**"]
+    env = dict(os.environ, REPAIR_GATE_DIR=str(GATE))
+    feedback, t_all, attempts = "", time.time(), []
+    for n in range(1, a.attempts + 1):
+        prompt = (PROMPTS / "repair.md").read_text().format(
+            component=c, property=pid, pid=pid.lower().replace("-", "_"), statement=str(rec.get("statement", "")).strip(),
+            traces=", ".join(map(str, rec.get("traces") or [])), tool_evidence=tools, finding=finding,
+            notes=notes, callees=callees,
+            previous=("" if not feedback else
+                      "\nTHE ACCEPTANCE CHECK REJECTED YOUR PREVIOUS ATTEMPT. Its output (last lines):\n```\n"
+                      + feedback + "\n```\nFix what it reports; keep what already works.\n"))
+        (run.dir / f"prompt_{n}.md").write_text(prompt)
+        before = set(changed_files(checkout))
+        ok, text, dt = agent(prompt, checkout, ["Read", "Grep", "Glob", "Write", "Edit", "Bash"], model=a.model,
+                             timeout=a.timeout, log=run.dir / f"agent_{n}.log", name=f"repair_{n}",
+                             policy={"writable": writable,
+                                     "forbid_add": [],
+                                     "stop_check": selfcheck_cmd("repair", notes)})
+        last = (text or "").strip().splitlines()[-1:] or [""]
+        run.event("agent", attempt=n, ok=ok, seconds=dt, last=last[0][:200])
+        def allowed(f):          # the component's code, tests and proof crates - never its bundle or another component
+            if "/.run/" in f:
+                return True
+            return f.startswith(f"components/{c}/") and not f.startswith(f"components/{c}/verif/") \
+                and not f.startswith(f"components/{c}/specs/")
+        stray = sorted(f for f in set(changed_files(checkout)) - before if not allowed(f))
+        if stray:
+            run.event("FAIL", reason="agent wrote outside the component's code and proof crates", files=stray[:10])
+            run.save("failed: stray writes")
+            return 1
+        verdict = last[0]
+        if "NOT A CODE BUG" in verdict or "BLOCKED" in verdict:
+            run.event("stopped", attempt=n, verdict=verdict[:300])
+            shutil.copy2(notes / "report.md", run.dir / "report.md") if (notes / "report.md").exists() else None
+            run.save(f"stopped by the agent: {verdict[:200]}")
+            return 1
+        t0 = time.time()
+        try:
+            p = sh(["bash", str(REPAIR / "repair_accept_repo.sh"), str(checkout), base, "--target", target],
+                   cwd=checkout, check=False, timeout=a.oracle_timeout, env=env)
+            out, rc = p.stdout + p.stderr, p.returncode
+        except subprocess.TimeoutExpired:
+            out, rc = f"acceptance check timed out after {a.oracle_timeout} s", 124
+        class _P:                                              # same shape for both paths
+            returncode = rc
+        p = _P()
+        (run.dir / f"oracle_{n}.txt").write_text(out)          # every attempt's verdict is kept
+        attempts.append({"attempt": n, "agent_s": dt, "oracle_s": round(time.time() - t0), "rc": p.returncode})
+        run.event("oracle", attempt=n, rc=p.returncode, seconds=round(time.time() - t0),
+                  tail=out.strip().splitlines()[-1][:200] if out.strip() else "")
+        if p.returncode == 0:
+            break
+        feedback = "\n".join(out.strip().splitlines()[-60:])
+    else:
+        run.rec["attempts"] = attempts
+        run.save(f"not accepted after {a.attempts} attempts (verdicts in oracle_*.txt)")
+        return 1
+    # ACCEPTED: commit (component only) and write the fix record
+    fixes = verif / "fixes"
+    fixes.mkdir(exist_ok=True)
+    fix = fixes / f"fix_{c}_{finding}.md"
+    fix.write_text(fix_record(c, finding, pid, rec, base, branch, attempts, time.time() - t_all,
+                              notes / "report.md", run.dir / f"oracle_{len(attempts)}.txt", callees))
+    git(checkout, "add", "-A", f"components/{c}")
+    names = git(checkout, "diff", "--cached", "--name-only").split()
+    if any(not x.startswith(f"components/{c}/") for x in names):
+        run.save("failed: staged files outside the component"); return 1
+    msg = (f"{c}: fix {finding} ({pid}) - repair accepted by the acceptance check\n\n"
+           f"See components/{c}/verif/fixes/{fix.name}. Not pushed.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>")
+    sh(["git", "-C", str(checkout), "-c", "user.name=" + os.environ.get("FV_GIT_NAME", "fv-driver"),
+        "-c", "user.email=" + os.environ.get("FV_GIT_EMAIL", "fv-driver@localhost"), "commit", "-q", "-m", msg])
+    head = git(checkout, "rev-parse", "--short", "HEAD")
+    if os.environ.get("FV_FIXES_DIR"):
+        shutil.copy2(fix, Path(os.environ["FV_FIXES_DIR"]) / fix.name)
+    run.rec.update(attempts=attempts, fix_commit=head, fix_record=str(fix))
+    run.event("accepted", commit=head, attempts=len(attempts), record=str(fix))
+    run.save(f"accepted: {head}")
+    return 0
+
+
+def fix_record(c, finding, pid, rec, base, branch, attempts, seconds, report, oracle, callees):
+    rep = report.read_text() if report.exists() else "(the agent wrote no report)"
+    prob = report.parent / "problem.md"
+    rep = (("## The problem (agent's statement and verdict)\n" + prob.read_text().strip() + "\n\n") if prob.exists() else "") + rep
+    ev = oracle.read_text().strip().splitlines() if oracle.exists() else []
+    table = "\n".join(ev[-25:])
+    tools = "\n".join(f"- {t}: {(rec.get(t) or {}).get('status') or 'unscored'} - {str((rec.get(t) or {}).get('note') or '')[:400]}"
+                      for t in ("creusot", "kani"))
+    eff = "\n".join(f"| {x['attempt']} | {round(x['agent_s'] / 60)} min | {round(x['oracle_s'] / 60)} min | "
+                    f"{'accepted' if x['rc'] == 0 else 'rejected'} |" for x in attempts)
+    return f"""# fix_{c}_{finding}
+
+```
+component:      {c}
+finding:        {finding}
+property:       {pid}
+found by:       see "How it was found"
+base commit:    {base[:12]}        branch: {branch}
+status:         found -> test red -> fixed -> verified (acceptance check) -> PR: (to open) -> merged: (no)
+reviewer:       (name, date)
+```
+
+## The property
+{str(rec.get('statement', '')).strip()}
+
+Traces: {', '.join(map(str, rec.get('traces') or []))}
+
+## How it was found
+{tools}
+
+{rep}
+
+## Verification after the fix (acceptance check, last lines)
+Target `{c}:{pid}`, callee modules `{callees}`.
+
+```
+{table}
+```
+
+## Effort
+| attempt | agent | check | verdict |
+|---|---|---|---|
+{eff}
+
+Total wall-clock: {round(seconds / 60)} min.
+"""
+
 def collections_count(xs):
     out = {}
     for x in xs:
@@ -860,6 +1022,14 @@ def selfcheck(kind, args):
                      if not isinstance(v, dict) or v.get("class") not in ("A", "B", "C")][:20]
             errs += [f"{i}: A/B without file:line evidence" for i, v in got.items()
                      if isinstance(v, dict) and v.get("class") in ("A", "B") and not v.get("evidence")][:20]
+        elif kind == "repair":
+            notes = Path(args[0])
+            rep = (notes / "report.md").read_text() if (notes / "report.md").exists() else ""
+            errs = []
+            if not (notes / "problem.md").exists():
+                errs.append(f"write {notes}/problem.md first (the problem in one plain sentence + spec and code locations)")
+            if "## Blocked" not in rep and "NOT A CODE BUG" not in rep.upper():
+                errs += [f"report.md lacks the section {h}" for h in REPORT_SECTIONS if h not in rep]
         elif kind == "prove":
             crate, ids = Path(args[0]), [i for i in args[1].split(",") if i]
             text = "\n".join(f.read_text(errors="replace") for f in crate.rglob("*.rs") if "/target/" not in str(f))
@@ -911,6 +1081,14 @@ def main():
     pv.add_argument("--score-only", action="store_true", help="skip the agent; fold + score what is in the crate")
     pv.add_argument("--timeout", type=int, default=7200, help="agent time box, seconds")
     pv.add_argument("--score-timeout", type=int, default=14400, help="scorer time box, seconds")
+    r = sub.add_parser("repair")
+    r.add_argument("checkout"); r.add_argument("component")
+    r.add_argument("--property", required=True, help="the refuted (or failing) property id")
+    r.add_argument("--finding", default=None, help="finding id for the fix record, e.g. F22")
+    r.add_argument("--callees", default=None, help="Creusot callee modules (default: from the property's evidence)")
+    r.add_argument("--attempts", type=int, default=2); r.add_argument("--model", default=None)
+    r.add_argument("--timeout", type=int, default=7200, help="agent time box per attempt, seconds")
+    r.add_argument("--oracle-timeout", type=int, default=10800, help="acceptance check time box, seconds")
     k = sub.add_parser("check")
     k.add_argument("checkout"); k.add_argument("component")
     a = ap.parse_args()
@@ -918,6 +1096,8 @@ def main():
         return step_prove(a)
     if a.cmd == "extract":
         return step_extract(a)
+    if a.cmd == "repair":
+        return step_repair(a)
     if a.cmd == "check":
         ok, _ = step_check(a.checkout, a.component)
         return 0 if ok else 1
