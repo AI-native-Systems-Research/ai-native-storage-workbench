@@ -921,6 +921,7 @@ def step_repair(a):
                 fix = fixes / f"fix_{c}_{finding}.md"
                 fix.write_text(fix_record(c, finding, pid, rec, base, branch, attempts, time.time() - t_all,
                                           notes / "report.md", run.dir / "no-oracle.txt", callees,
+                                      glance=fix_snippets(checkout, c, rec, base, notes),
                                           status="NOT a code bug / needs a design decision" if "NOT A CODE BUG" in verdict
                                           else "BLOCKED by the environment"))
                 if os.environ.get("FV_FIXES_DIR"):
@@ -953,7 +954,8 @@ def step_repair(a):
     fixes.mkdir(exist_ok=True)
     fix = fixes / f"fix_{c}_{finding}.md"
     fix.write_text(fix_record(c, finding, pid, rec, base, branch, attempts, time.time() - t_all,
-                              notes / "report.md", run.dir / f"oracle_{len(attempts)}.txt", callees))
+                              notes / "report.md", run.dir / f"oracle_{len(attempts)}.txt", callees,
+                              glance=fix_snippets(checkout, c, rec, base, notes)))
     git(checkout, "add", "-A", f"components/{c}")
     names = git(checkout, "diff", "--cached", "--name-only").split()
     if any(not x.startswith(f"components/{c}/") for x in names):
@@ -971,8 +973,82 @@ def step_repair(a):
     return 0
 
 
+def fix_snippets(checkout, c, rec, base, notes, fix_rev=None, max_lines=60):
+    """'At a glance' for the fix record: the spec lines the finding is about, the code change (or, with no fix, the
+    code it cites), and the red-first test - cut from the repository so a reader needs no other file."""
+    def show(rev, path):
+        p = sh(["git", "-C", str(checkout), "show", f"{rev}:{path}"], check=False)
+        return p.stdout.splitlines() if p.returncode == 0 else None
+    text = " ".join(map(str, rec.get("traces") or []))
+    for f in ("problem.md", "report.md"):
+        if (notes / f).exists():
+            text += " " + (notes / f).read_text()
+    out, seen = [], set()
+    # 1. spec excerpts: explicit file:line references first, then FR ids
+    files = sh(["git", "-C", str(checkout), "ls-tree", "-r", "--name-only", base, f"components/{c}/specs"],
+               check=False).stdout.split()
+    for name, a, b in re.findall(r"([\w./-]+\.md):(\d+)(?:-(\d+))?", text):
+        tail = name.split(f"components/{c}/")[-1]
+        path = next((f for f in files if f.endswith(tail) or f.endswith("/" + tail)), None)
+        if not path:
+            continue
+        lines = show(base, path)
+        if not lines:
+            continue
+        lo, hi = int(a), int(b or a)
+        if any(p == path and l0 <= lo <= h0 + 1 for p, l0, h0 in seen if isinstance(l0, int)):
+            continue                                       # overlaps an excerpt already shown
+        seen.add((path, lo, max(hi, lo + 1)))
+        out.append((f"{path}:{lo}" + (f"-{hi}" if hi != lo else ""),
+                    "\n".join(lines[lo - 1:min(hi + 1, lo + 7)])))
+        if len(out) >= 3:
+            break
+    if not out:
+        for fr in dict.fromkeys(re.findall(r"\bFR-\d+\b", text)):
+            for f in (f for f in files if f.endswith("spec.md")):
+                lines = show(base, f) or []
+                hit = next((i for i, l in enumerate(lines) if re.search(rf"\*\*{fr}\*\*|\b{fr}\b:", l)), None)
+                if hit is not None:
+                    out.append((f"{f}:{hit + 1}", "\n".join(lines[hit:hit + 3])))
+                    break
+            if len(out) >= 2:
+                break
+    md = ["## At a glance: spec, code, test", "", "### What the spec says"]
+    md += [f"`{where}`\n```\n{body}\n```" for where, body in out] or ["(no spec line cited - a property the code itself documents)"]
+    # 2. the code: the fix as a diff, or - with no fix - the code it cites, at base
+    tgt = [fix_rev] if fix_rev else []
+    diff = sh(["git", "-C", str(checkout), "diff", "-U2", base, *tgt, "--", f"components/{c}/src",
+               f":(exclude,glob)components/{c}/src/**/repair_test_*"], check=False).stdout.splitlines()
+    diff = [l for l in diff if not l.startswith(("diff --git", "index ", "--- a/", "+++ b/", "--- /dev/null",
+                                                 "new file mode"))]
+    if diff:
+        md += ["", "### The code: before (-) and after (+)", "```diff", *diff[:max_lines]]
+        md += [f"... ({len(diff) - max_lines} more lines in the commit)"] if len(diff) > max_lines else []
+        md += ["```"]
+    else:
+        for path, a, b in list(dict.fromkeys(re.findall(r"(src/[\w/.-]+\.rs):(\d+)(?:-(\d+))?", text)))[:2]:
+            lines = show(base, f"components/{c}/{path}")
+            if lines:
+                lo, hi = int(a), int(b or a)
+                md += ["", f"### The code it is about: `components/{c}/{path}:{lo}" + (f"-{hi}`" if hi != lo else "`"),
+                       "```rust", *lines[max(lo - 2, 0):min(hi + 2, lo + 15)], "```"]
+    # 3. the red-first test
+    names = sh(["git", "-C", str(checkout), "diff", "--name-only", base, *tgt, "--", f"components/{c}/src"],
+               check=False).stdout.split()
+    names += sh(["git", "-C", str(checkout), "ls-files", "--others", "--exclude-standard", "--", f"components/{c}/src"],
+                check=False).stdout.split()
+    for t in [t for t in dict.fromkeys(names) if re.search(r"/repair_test_[^/]+\.rs$", t)][:1]:
+        body = (show(fix_rev, t) if fix_rev else None) or \
+            ((checkout / t).read_text().splitlines() if (checkout / t).exists() else [])
+        md += ["", f"### The test that shows the bug: `{t}` (fails on the old code, passes on the fix)", "```rust",
+               *body[:40]]
+        md += [f"... ({len(body) - 40} more lines)"] if len(body) > 40 else []
+        md += ["```"]
+    return "\n".join(md) + "\n"
+
 def fix_record(c, finding, pid, rec, base, branch, attempts, seconds, report, oracle, callees,
-               status="found -> test red -> fixed -> verified (acceptance check) -> PR: (to open) -> merged: (no)"):
+               status="found -> test red -> fixed -> verified (acceptance check) -> PR: (to open) -> merged: (no)",
+               glance=""):
     rep = report.read_text() if report.exists() else "(the agent wrote no report)"
     prob = report.parent / "problem.md"
     rep = (("## The problem (agent's statement and verdict)\n" + prob.read_text().strip() + "\n\n") if prob.exists() else "") + rep
@@ -997,6 +1073,8 @@ reviewer:       (name, date)
 
 ## The property
 {str(rec.get('statement', '')).strip()}
+
+{glance}
 
 Traces: {', '.join(map(str, rec.get('traces') or []))}
 
