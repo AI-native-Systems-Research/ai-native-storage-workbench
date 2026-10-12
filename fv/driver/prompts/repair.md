@@ -18,7 +18,7 @@ DO THESE STEPS, IN ORDER:
    `#[cfg(test)] #[path = "repair_test_<name>.rs"] mod repair_test_<name>;`. Run it and see it fail.
 3. **Fix the code** in `components/{component}/src/`. Fix the root cause wherever it occurs, not only the line
    the tool pointed at. Keep the change as small as the root cause allows. Run the test and see it pass; run the
-   crate's `cargo test`.
+   crate's `cargo test` FIVE times (the check does too: a flaky crash in any run rejects the repair).
 4. **Make the fix formally verified** in `components/{component}/verif-creusot/`: update the model of every
    function whose body you changed (the check rejects a proof of the OLD code), add `verify_{pid}` proving the
    property and its `verify_{pid}__mutant` twin that must FAIL, and keep every module that proved before

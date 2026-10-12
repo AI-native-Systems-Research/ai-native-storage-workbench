@@ -75,13 +75,23 @@ if (( nenv )); then envmsg="; not checked here, native library unavailable on th
 echo "  A. BUILDS   : $nok of $ntot crates checked OK$envmsg"
 EVID+=("workspace|build of touched and dependent crates|$nok OK$envev")
 
-# B. TESTED
+# B. TESTED - run REPAIR_TEST_RUNS times (default 5): one passing run says nothing about a flaky crash.
+# (zyre, 2026-10-11: a race in node creation crashed the tests about 2 runs in 5; a single run passed by luck.)
+RUNS="${REPAIR_TEST_RUNS:-5}"
 for c in $TOUCHED; do
   p="$(pkg "$c")"; [[ -z "$p" ]] && continue
-  tout="$(cd "$REPO" && timeout 1800 cargo test -q -p "$p" 2>&1)"
-  if grep -q 'test result: ok' <<<"$tout" && ! grep -qE 'test result: FAILED|^error' <<<"$tout"; then
-    n=$(grep -oE '[0-9]+ passed' <<<"$tout" | awk '{s+=$1} END {print s+0}'); echo "  B. TESTED   : $c yes ($n passed)"; EVID+=("$c|unit tests|$n passed")
-  else echo "  B. TESTED   : $c NO"; grep -E 'panicked at|test result|^error' <<<"$tout" | head -3 | sed 's/^/       │ /'; fail=1; EVID+=("$c|unit tests|FAILED"); fi
+  ok_runs=0; n=0; bad=""
+  for r in $(seq 1 "$RUNS"); do
+    tout="$(cd "$REPO" && timeout 1800 cargo test -q -p "$p" 2>&1)"
+    if grep -q 'test result: ok' <<<"$tout" && ! grep -qE 'test result: FAILED|^error' <<<"$tout"; then
+      ok_runs=$((ok_runs+1)); n=$(grep -oE '[0-9]+ passed' <<<"$tout" | awk '{s+=$1} END {print s+0}')
+    else bad="$tout"; break; fi
+  done
+  if [[ -z "$bad" ]]; then
+    echo "  B. TESTED   : $c yes ($n passed, $ok_runs/$RUNS runs)"; EVID+=("$c|unit tests ($RUNS runs)|$n passed in each run")
+  else echo "  B. TESTED   : $c NO (run $((ok_runs+1)) of $RUNS failed after $ok_runs passing runs)"
+    grep -E 'panicked at|test result|^error|SIGABRT|signal' <<<"$bad" | head -4 | sed 's/^/       │ /'; fail=1
+    EVID+=("$c|unit tests ($RUNS runs)|FAILED in run $((ok_runs+1))"); fi
 done
 
 # C. TARGETS
