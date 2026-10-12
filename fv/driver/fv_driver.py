@@ -901,6 +901,17 @@ def step_repair(a):
         if "NOT A CODE BUG" in verdict or "BLOCKED" in verdict:
             run.event("stopped", attempt=n, verdict=verdict[:300])
             shutil.copy2(notes / "report.md", run.dir / "report.md") if (notes / "report.md").exists() else None
+            # a "not a code bug" / "blocked" verdict is a result too: keep a record of it (NOT committed)
+            attempts.append({"attempt": n, "agent_s": dt, "oracle_s": 0, "rc": None})
+            fixes = verif / "fixes"
+            fixes.mkdir(exist_ok=True)
+            fix = fixes / f"fix_{c}_{finding}.md"
+            fix.write_text(fix_record(c, finding, pid, rec, base, branch, attempts, time.time() - t_all,
+                                      notes / "report.md", run.dir / "no-oracle.txt", callees,
+                                      status="NOT a code bug / needs a design decision" if "NOT A CODE BUG" in verdict
+                                      else "BLOCKED by the environment"))
+            if os.environ.get("FV_FIXES_DIR"):
+                shutil.copy2(fix, Path(os.environ["FV_FIXES_DIR"]) / fix.name)
             run.save(f"stopped by the agent: {verdict[:200]}")
             return 1
         t0 = time.time()
@@ -947,7 +958,8 @@ def step_repair(a):
     return 0
 
 
-def fix_record(c, finding, pid, rec, base, branch, attempts, seconds, report, oracle, callees):
+def fix_record(c, finding, pid, rec, base, branch, attempts, seconds, report, oracle, callees,
+               status="found -> test red -> fixed -> verified (acceptance check) -> PR: (to open) -> merged: (no)"):
     rep = report.read_text() if report.exists() else "(the agent wrote no report)"
     prob = report.parent / "problem.md"
     rep = (("## The problem (agent's statement and verdict)\n" + prob.read_text().strip() + "\n\n") if prob.exists() else "") + rep
@@ -956,7 +968,8 @@ def fix_record(c, finding, pid, rec, base, branch, attempts, seconds, report, or
     tools = "\n".join(f"- {t}: {(rec.get(t) or {}).get('status') or 'unscored'} - {str((rec.get(t) or {}).get('note') or '')[:400]}"
                       for t in ("creusot", "kani"))
     eff = "\n".join(f"| {x['attempt']} | {round(x['agent_s'] / 60)} min | {round(x['oracle_s'] / 60)} min | "
-                    f"{'accepted' if x['rc'] == 0 else 'rejected'} |" for x in attempts)
+                    f"{'accepted' if x['rc'] == 0 else ('stopped by the agent' if x['rc'] is None else 'rejected')} |"
+                    for x in attempts)
     return f"""# fix_{c}_{finding}
 
 ```
@@ -965,7 +978,7 @@ finding:        {finding}
 property:       {pid}
 found by:       see "How it was found"
 base commit:    {base[:12]}        branch: {branch}
-status:         found -> test red -> fixed -> verified (acceptance check) -> PR: (to open) -> merged: (no)
+status:         {status}
 reviewer:       (name, date)
 ```
 
