@@ -2,6 +2,10 @@
 
 One line per push, newest first. Details are in the commit messages (`git log -- fv/`).
 
+- 2026-10-12 - Repair agent in our own driver (`fv_driver.py repair`: explain -> red-first test -> fix -> proof of
+  the fix; the acceptance check decides; local commit + fix_<component>_<finding>.md), tests run 5x, red-first
+  leg fixed for native libraries, `--check-only`; Kani split harnesses + contract proofs in the scorer;
+  docs FV_AGENT.md and REPAIR.md. Used overnight: dispatch-map, memory-tier and zyre bugs fixed and proved.
 - 2026-10-10 - First unattended fv-agent runs on two never-verified components (zyre, block-device-kernel) and
   the fixes they forced: jobs run memory-capped (systemd user scope, OOMPolicy=continue), leftover processes
   swept, no background shells, at most 2 provers at a time, timed-out work still scored, supervisor stops on
