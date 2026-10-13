@@ -44,6 +44,28 @@ against that commit). Useful environment: `FV_GIT_NAME` / `FV_GIT_EMAIL` (commit
 (native libraries such as SPDK), `ZYRE_BUILD_DIR`, `REPAIR_TEST_RUNS` (default 5). Run it inside a memory-capped
 scope, as `fv_repair_queue.sh` does for a batch of repairs.
 
+## Options and what the check handles (added 2026-10-12/13)
+- **Several properties, one root cause:** `--property A,B,C` - one acceptance target per property, all must pass, one
+  fix record (dispatch-map: `get_pool_id()` broke three methods).
+- **Loom properties:** `--loom` - the target is proved with Loom (`verif-loom/`) instead of Creusot. The Loom part of
+  the check (`repair_accept_loom.sh`) requires: the Loom test FAILS on the old code and PASSES on the fixed code, its
+  `__mutant` twin still fails, and `verif-loom/mirrored_sources.sha256` matches the fixed source. It states whether
+  Loom's search was bounded (a bounded pass is a weaker claim).
+- **Both published layouts:** new (`verif-creusot/` is the Creusot crate) and old (`verif/` is both crate and bundle)
+  - chosen per component by `layout.sh`.
+- **The component's own test features:** a component that compiles parts only with a `testing` feature is built and
+  tested with it (`REPAIR_TEST_FEATURES` overrides; `none` = default features).
+- **Environment set up by the step itself:** native-library links (`deps/spdk`, `deps/spdk-build`, `zyre-build`)
+  and the component's `creusot` link are created when missing.
+- **Safeguards in the check:** tests run 5 times; the old code is built with the native libraries before judging the
+  red-first test (a missing library is ENVIRONMENT, not a verdict); a re-verification baseline that proved nothing is
+  rejected, never cached.
+- **Records:** every fix record starts with a 40-50 word "In short" (Problem / Fix) and an "At a glance" section with
+  the spec lines, the code before and after, and the test. A "not a code bug" or "blocked" verdict gets a record in
+  the run folder (not committed). `--check-only` re-runs only the check on a repair already on disk.
+- **Batches:** `fv_repair_queue.sh <cap> "<worktree>|<component>|<property>|<finding>|<callees>[|loom|needs-io_uring]" ...`
+  runs repairs one after another, each in its own memory-capped scope.
+
 ## Why this and not the generated agent
 We first used a repair agent generated with a colleague's agent builder (vendored in
 `fv/skills/component-repair/agent/`). On the same bug (zyre format strings) and the same acceptance check:

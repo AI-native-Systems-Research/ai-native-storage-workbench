@@ -2,6 +2,10 @@
 
 One line per push, newest first. Details are in the commit messages (`git log -- fv/`).
 
+- 2026-10-13 - Repair step: several properties per repair, Loom targets (`--loom`, repair_accept_loom.sh), both
+  published Creusot layouts, the component's test features, self-setup of native-library links, `--check-only`;
+  the check rejects empty baselines and states Loom bounds; fix records open with In short + At a glance. Used to
+  fix and re-prove 6 bugs (dispatch-map, memory-tier, zyre, block-device-kernel, 2 in extended-metadata-store).
 - 2026-10-12 - Repair agent in our own driver (`fv_driver.py repair`: explain -> red-first test -> fix -> proof of
   the fix; the acceptance check decides; local commit + fix_<component>_<finding>.md), tests run 5x, red-first
   leg fixed for native libraries, `--check-only`; Kani split harnesses + contract proofs in the scorer;
