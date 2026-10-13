@@ -860,10 +860,19 @@ def step_repair(a):
     base = git(checkout, "rev-parse", "HEAD")
     d = yaml.safe_load(open(verif / "unified_properties.yaml"))
     P = {p["id"]: p for p in d["properties"]}
-    if pid not in P:
-        raise SystemExit(f"{pid} is not in the bundle")
-    rec = P[pid]
-    cre = rec.get("creusot") or {}
+    pids = [x.strip() for x in pid.split(",") if x.strip()]      # several properties = one root cause, one repair
+    missing = [x for x in pids if x not in P]
+    if missing:
+        raise SystemExit(f"not in the bundle: {missing}")
+    if len(pids) == 1:
+        rec = P[pids[0]]
+    else:   # one record for the prompt and the fix record: every statement, every trace, every tool's verdict
+        rec = {"statement": "\n".join(f"- {x}: {str(P[x].get('statement', '')).strip()}" for x in pids),
+               "traces": list(dict.fromkeys(t for x in pids for t in (P[x].get("traces") or []))),
+               **{t: {"status": "; ".join(f"{x}: {(P[x].get(t) or {}).get('status') or 'unscored'}" for x in pids),
+                      "note": " | ".join(str((P[x].get(t) or {}).get("note") or "")[:200] for x in pids)}
+                  for t in ("creusot", "kani")}}
+    cre = P[pids[0]].get("creusot") or {}
     callees = a.callees or ",".join(m for m in ((cre.get("evidence") or {}).get("modules") or [])
                                     if not m.startswith(("verify_", "refute_", "lemma_")))
     if not callees and not a.loom:
@@ -873,10 +882,15 @@ def step_repair(a):
     run = Run(verif, f"repair-{finding}")
     notes = run.dir / "agent"
     notes.mkdir(parents=True, exist_ok=True)
-    target = f"{c}:{pid}" if a.loom else f"{c}:{pid}:{callees}"
-    target_args = ["--loom-target", target] if a.loom else ["--target", target]
+    target = ";".join(f"{c}:{x}" if a.loom else f"{c}:{x}:{callees}" for x in pids)
+    target_args = [arg for x in pids for arg in (["--loom-target", f"{c}:{x}"] if a.loom
+                                                  else ["--target", f"{c}:{x}:{callees}"])]
+    pid_names = ", ".join(x.lower().replace("-", "_") for x in pids)
     proof_step = (PROOF_STEP_LOOM if a.loom else PROOF_STEP_CREUSOT).format(
-        component=c, pid=pid.lower().replace("-", "_"), callees=callees or "(none)")
+        component=c, pid=pid_names if len(pids) == 1 else "<id>", callees=callees or "(none)")
+    if len(pids) > 1:
+        proof_step += ("\n   Do this for EACH <id>: " + ", ".join(f"`{x.lower().replace('-', '_')}`" for x in pids)
+                       + " - one proof and one failing twin per property; the check requires all of them.")
     run.event("start", component=c, property=pid, finding=finding, base=base[:12], branch=branch, target=target)
     tools = "; ".join(f"{t}: {(rec.get(t) or {}).get('status') or 'unscored'} - "
                       f"{str((rec.get(t) or {}).get('note') or '')[:300]}" for t in ("creusot", "kani"))
@@ -900,7 +914,8 @@ def step_repair(a):
         dt = 0
         if not a.check_only:
             prompt = (PROMPTS / "repair.md").read_text().format(
-                component=c, property=pid, pid=pid.lower().replace("-", "_"), statement=str(rec.get("statement", "")).strip(),
+                component=c, property=pid if len(pids) == 1 else
+                ", ".join(pids) + " (ONE root cause: fix it once, so that ALL of them hold)", pid=pid_names, statement=str(rec.get("statement", "")).strip(),
                 traces=", ".join(map(str, rec.get("traces") or [])), tool_evidence=tools, finding=finding,
                 notes=notes, callees=callees, proof_step=proof_step,
                 previous=("" if not feedback else
