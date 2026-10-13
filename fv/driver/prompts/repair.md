@@ -19,10 +19,7 @@ DO THESE STEPS, IN ORDER:
 3. **Fix the code** in `components/{component}/src/`. Fix the root cause wherever it occurs, not only the line
    the tool pointed at. Keep the change as small as the root cause allows. Run the test and see it pass; run the
    crate's `cargo test` FIVE times (the check does too: a flaky crash in any run rejects the repair).
-4. **Make the fix formally verified** in `components/{component}/verif-creusot/`: update the model of every
-   function whose body you changed (the check rejects a proof of the OLD code), add `verify_{pid}` proving the
-   property and its `verify_{pid}__mutant` twin that must FAIL, and keep every module that proved before
-   proving. Callee modules the check will require: {callees}.
+{proof_step}
 5. **Write {notes}/report.md** with these sections (plain English; it becomes the fix record and the PR text):
    `## Bug` (one sentence) / `## Impact` (what a user of the component would see) / `## How to reproduce`
    (2-3 steps a colleague can run) / `## Fix` (what changed, and the alternatives you rejected and why) /

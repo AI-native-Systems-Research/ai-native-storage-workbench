@@ -833,6 +833,17 @@ def step_prove(a):
 
 
 REPAIR = FV / "skills" / "component-repair"
+PROOF_STEP_CREUSOT = """4. **Make the fix formally verified** in `components/{component}/verif-creusot/`: update the model of every
+   function whose body you changed (the check rejects a proof of the OLD code), add `verify_{pid}` proving the
+   property and its `verify_{pid}__mutant` twin that must FAIL, and keep every module that proved before
+   proving. Callee modules the check will require: {callees}."""
+PROOF_STEP_LOOM = """4. **Make the fix verified over all thread interleavings** in `components/{component}/verif-loom/` (Loom; run
+   with `RUSTFLAGS="--cfg loom" cargo test --release <test> -- --exact`, in the foreground with `timeout 900`):
+   the mirror there must follow the fixed code line for line - update every mirrored function whose source you
+   changed and refresh `verif-loom/mirrored_sources.sha256` (the check compares it with the fixed source). Then
+   `verify_{pid}` must PASS and `verify_{pid}__mutant` must still FAIL. Do not weaken the test or the twin, and do
+   not add a preemption bound the test did not have. If `verif-creusot/` mirrors a function you changed, update
+   that model too (the check requires it)."""
 REPORT_SECTIONS = ("## Bug", "## Impact", "## How to reproduce", "## Fix", "## Scope beyond the finding", "## Risk")
 
 
@@ -855,14 +866,17 @@ def step_repair(a):
     cre = rec.get("creusot") or {}
     callees = a.callees or ",".join(m for m in ((cre.get("evidence") or {}).get("modules") or [])
                                     if not m.startswith(("verify_", "refute_", "lemma_")))
-    if not callees:
+    if not callees and not a.loom:
         raise SystemExit("no callee modules known for this property: pass --callees mod1,mod2 (the Creusot modules "
                          "whose goals the property depends on)")
     finding = a.finding or pid
     run = Run(verif, f"repair-{finding}")
     notes = run.dir / "agent"
     notes.mkdir(parents=True, exist_ok=True)
-    target = f"{c}:{pid}:{callees}"
+    target = f"{c}:{pid}" if a.loom else f"{c}:{pid}:{callees}"
+    target_args = ["--loom-target", target] if a.loom else ["--target", target]
+    proof_step = (PROOF_STEP_LOOM if a.loom else PROOF_STEP_CREUSOT).format(
+        component=c, pid=pid.lower().replace("-", "_"), callees=callees or "(none)")
     run.event("start", component=c, property=pid, finding=finding, base=base[:12], branch=branch, target=target)
     tools = "; ".join(f"{t}: {(rec.get(t) or {}).get('status') or 'unscored'} - "
                       f"{str((rec.get(t) or {}).get('note') or '')[:300]}" for t in ("creusot", "kani"))
@@ -887,7 +901,7 @@ def step_repair(a):
             prompt = (PROMPTS / "repair.md").read_text().format(
                 component=c, property=pid, pid=pid.lower().replace("-", "_"), statement=str(rec.get("statement", "")).strip(),
                 traces=", ".join(map(str, rec.get("traces") or [])), tool_evidence=tools, finding=finding,
-                notes=notes, callees=callees,
+                notes=notes, callees=callees, proof_step=proof_step,
                 previous=("" if not feedback else
                           "\nTHE ACCEPTANCE CHECK REJECTED YOUR PREVIOUS ATTEMPT. Its output (last lines):\n```\n"
                           + feedback + "\n```\nFix what it reports; keep what already works.\n"))
@@ -930,7 +944,7 @@ def step_repair(a):
                 return 1
         t0 = time.time()
         try:
-            p = sh(["bash", str(REPAIR / "repair_accept_repo.sh"), str(checkout), base, "--target", target],
+            p = sh(["bash", str(REPAIR / "repair_accept_repo.sh"), str(checkout), base, *target_args],
                    cwd=checkout, check=False, timeout=a.oracle_timeout, env=env)
             out, rc = p.stdout + p.stderr, p.returncode
         except subprocess.TimeoutExpired:
@@ -1192,6 +1206,7 @@ def main():
     r.add_argument("--callees", default=None, help="Creusot callee modules (default: from the property's evidence)")
     r.add_argument("--attempts", type=int, default=2); r.add_argument("--model", default=None)
     r.add_argument("--check-only", action="store_true", help="no agent: re-run the acceptance check on the repair on disk")
+    r.add_argument("--loom", action="store_true", help="the property is proved with Loom (verif-loom/), not Creusot")
     r.add_argument("--timeout", type=int, default=7200, help="agent time box per attempt, seconds")
     r.add_argument("--oracle-timeout", type=int, default=10800, help="acceptance check time box, seconds")
     k = sub.add_parser("check")

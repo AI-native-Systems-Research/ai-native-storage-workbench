@@ -23,11 +23,12 @@
 # Prints a plain-English evidence table at the end, for the PR description.
 set -uo pipefail
 REPO="${1:?usage: repair_accept_repo.sh <repo> <base-rev> --target c:ID:mods ...}"; BASE="${2:?}"; shift 2
-TARGETS=(); PFX="verif/creusot/"
+TARGETS=(); LTARGETS=(); PFX="verif/creusot/"
 while (( $# )); do case "$1" in
   --target) TARGETS+=("${2:?}"); shift ;;
   --targets) IFS=';' read -ra _t <<<"${2:?}"; for x in "${_t[@]}"; do [[ -n "$x" ]] && TARGETS+=("$x"); done; shift ;;
   --verif-prefix) PFX="${2:?}"; shift ;;
+  --loom-target) LTARGETS+=("${2:?}"); shift ;;     # component:ID proved with Loom (repair_accept_loom.sh)
   *) echo "ACCEPT-REPO: FAIL — unknown arg $1"; exit 2 ;;
 esac; shift; done
 export PATH="$HOME/.local/share/creusot/bin:$HOME/.cargo/bin:$PATH"
@@ -43,7 +44,7 @@ GATE="${REPAIR_GATE_DIR:-$(cd "$HERE/../component-verify/gate" 2>/dev/null && pw
 fail=0; declare -a EVID
 TOUCHED="$( { git -C "$REPO" diff --name-only "$BASE" -- components; git -C "$REPO" ls-files --others --exclude-standard -- components; } \
             | awk -F/ '$1=="components"{print $2}' | sort -u)"
-for t in "${TARGETS[@]}"; do TOUCHED="$(printf '%s\n%s\n' "$TOUCHED" "${t%%:*}" | sed '/^$/d' | sort -u)"; done
+for t in "${TARGETS[@]}" "${LTARGETS[@]}"; do TOUCHED="$(printf '%s\n%s\n' "$TOUCHED" "${t%%:*}" | sed '/^$/d' | sort -u)"; done
 echo "ACCEPT-REPO: base $BASE; components touched: $(echo $TOUCHED)"
 pkg() { sed -nE 's/^name[[:space:]]*=[[:space:]]*"([^"]+)".*/\1/p' "$REPO/components/$1/Cargo.toml" 2>/dev/null | head -1; }
 
@@ -101,6 +102,12 @@ for t in "${TARGETS[@]}"; do
     echo "  C. TARGET   : $c $id yes"; EVID+=("$c|$id|not proved before -> PROVED; new test fails on the old code, passes on the new")
   else echo "  C. TARGET   : $c $id NO"; grep -E '^  [0-9b]+\.|NO' /tmp/rar_$$.log | head -6 | sed 's/^/       │ /'; fail=1; EVID+=("$c|$id|NOT accepted"); fi
 done; rm -f /tmp/rar_$$.log
+for t in "${LTARGETS[@]}"; do
+  IFS=: read -r c id <<<"$t"
+  if (cd "$REPO" && bash "$HERE/repair_accept_loom.sh" "$REPO" "$c" "$id" "$BASE") > /tmp/ral_$$.log 2>&1; then
+    echo "  C. TARGET   : $c $id yes (Loom)"; EVID+=("$c|$id (Loom)|violated before -> PROVED over all interleavings; twin fails; new test fails on the old code, passes on the new")
+  else echo "  C. TARGET   : $c $id NO (Loom)"; grep -E '^  [0-9]\.' /tmp/ral_$$.log | grep -E 'NO|ENVIRONMENT' | head -6 | sed 's/^/       │ /'; fail=1; EVID+=("$c|$id (Loom)|NOT accepted"); fi
+done; rm -f /tmp/ral_$$.log
 
 # D. MODEL  +  E. REVERIFY
 for c in $TOUCHED; do
