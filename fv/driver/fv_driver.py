@@ -1188,7 +1188,7 @@ def main():
     r = sub.add_parser("repair")
     r.add_argument("checkout"); r.add_argument("component")
     r.add_argument("--property", required=True, help="the refuted (or failing) property id")
-    r.add_argument("--finding", default=None, help="finding id for the fix record, e.g. F22")
+    r.add_argument("--finding", default=None, help="finding id for the fix record, e.g. printf-format")
     r.add_argument("--callees", default=None, help="Creusot callee modules (default: from the property's evidence)")
     r.add_argument("--attempts", type=int, default=2); r.add_argument("--model", default=None)
     r.add_argument("--check-only", action="store_true", help="no agent: re-run the acceptance check on the repair on disk")

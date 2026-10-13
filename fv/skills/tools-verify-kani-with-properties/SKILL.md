@@ -203,7 +203,7 @@ HashMap-backed component was once mis-recorded as whole-component ⊘ when a one
 - **Reference:** `verif/skills_research/KANI_capability_catalog.md` in the eviction-policy-session-lists
   component carries the full catalog with flags, examples, and soundness costs.
 
-## Small harnesses — build them to FINISH (mandatory; F23, 2026-10-10)
+## Small harnesses — build them to FINISH (mandatory; FND-23, 2026-10-10)
 
 Measured on two components the agent had never seen (zyre, block-device-kernel): 54 of 63 and 59 of 64 open
 Kani cells were time or memory walls. Harnesses that finished were cheap (median 15-42 s, under 2 GB); the
@@ -225,7 +225,7 @@ harness is built, not Kani.
    advisory note - a bounded proof is a weaker claim and the page says so.
 4. **Stub the heavy parts:** `RandomState` / hashing, large containers, `format!`, and every C call. A C-call
    stub models the function's DOCUMENTED semantics (read the header) - it is a trusted assumption, and a wrong
-   one hides real bugs (F22: libzyre's printf-style `zyre_set_header`).
+   one hides real bugs (FND-22: libzyre's printf-style `zyre_set_header`).
 5. **Contracts only when they are cheap.** A function contract (`#[kani::requires]`/`#[kani::ensures]`, proved
    with `#[kani::proof_for_contract(f)]`, used through `#[kani::stub_verified(f)]`) lets a caller skip the
    callee's body; a loop contract (`#[kani::loop_invariant]`) replaces unrolling. The scorer adds

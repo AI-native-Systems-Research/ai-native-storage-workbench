@@ -177,7 +177,7 @@ _CONTRACT_FLAGS = {}
 
 def contract_flags(component_dir):
     """`-Z function-contracts` (and `-Z loop-contracts`) only for a crate that USES them. A contract-free crate
-    keeps exactly the flags it was scored with before, so before/after runs stay comparable (F23, X135)."""
+    keeps exactly the flags it was scored with before, so before/after runs stay comparable (FND-23, X135)."""
     key = os.path.abspath(component_dir)
     if key not in _CONTRACT_FLAGS:
         fc = lc = False

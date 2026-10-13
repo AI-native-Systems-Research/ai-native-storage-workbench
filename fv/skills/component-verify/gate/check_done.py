@@ -13,7 +13,7 @@ A component is DONE when:
   SCR  every Level-2 property has a scorer-owned status for every tool that is not withheld by a tool_note
   UNR  no Level-2 property is UNRESOLVED (or unscored) in a non-withheld tool
   XT   cross-tool check: no property proved by one tool and refuted by the other
-  TWIN no Kani credit on the bounded path (--no-unwinding-checks) without a twin that ran (the F15/F17 defect)
+  TWIN no Kani credit on the bounded path (--no-unwinding-checks) without a twin that ran (the FND-15/FND-17 defect)
   PAGE <c>_scoring.html and <c>_discordances.html exist next to the bundle
 
 usage: check_done.py <verif_dir> [<verif_dir> ...]      (exit 0 only if every one is DONE)

@@ -55,6 +55,6 @@ step leaves a provenance record in `verif/.run/driver/`.
 - The first runs found 8 defects in this machinery (all fixed): see the notebook, fixes X150-X156.
 
 ## Known limits
-- Kani coverage on a new component is limited by harness size and state cost (finding F23). We accept Creusot
+- Kani coverage on a new component is limited by harness size and state cost (finding FND-23). We accept Creusot
   plus the Kani we have, and use Kani as an independent second check.
-- One sync pass misses some disagreements; repeated passes keep finding new ones (finding F19).
+- One sync pass misses some disagreements; repeated passes keep finding new ones (finding FND-19).
