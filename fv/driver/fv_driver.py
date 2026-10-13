@@ -881,7 +881,8 @@ def step_repair(a):
     tools = "; ".join(f"{t}: {(rec.get(t) or {}).get('status') or 'unscored'} - "
                       f"{str((rec.get(t) or {}).get('note') or '')[:300]}" for t in ("creusot", "kani"))
     comp = checkout / "components" / c
-    writable = [str(comp / x) + "/**" for x in ("src", "tests", "verif-creusot", "verif-kani")] + [str(notes) + "/**"]
+    writable = [str(comp / x) + "/**" for x in ("src", "tests", "verif-creusot", "verif-kani", "verif-loom")] \
+        + [str(notes) + "/**"]
     env = dict(os.environ, REPAIR_GATE_DIR=str(GATE))
     feedback, t_all, attempts = "", time.time(), []
     if a.check_only:
@@ -930,9 +931,9 @@ def step_repair(a):
                 shutil.copy2(notes / "report.md", run.dir / "report.md") if (notes / "report.md").exists() else None
                 # a "not a code bug" / "blocked" verdict is a result too: keep a record of it (NOT committed)
                 attempts.append({"attempt": n, "agent_s": dt, "oracle_s": 0, "rc": None})
-                fixes = verif / "fixes"
-                fixes.mkdir(exist_ok=True)
-                fix = fixes / f"fix_{c}_{finding}.md"
+                # not committed, so it must not leave the component dirty (that blocked the next queued repair):
+                # it goes to the run folder (git-ignored) and to FV_FIXES_DIR
+                fix = run.dir / f"fix_{c}_{finding}.md"
                 fix.write_text(fix_record(c, finding, pid, rec, base, branch, attempts, time.time() - t_all,
                                           notes / "report.md", run.dir / "no-oracle.txt", callees,
                                       glance=fix_snippets(checkout, c, rec, base, notes),
