@@ -29,8 +29,11 @@ loom_test() {   # <crate dir> <test name> -> rc 0 pass / 1 fail / 124 timeout / 
   (cd "$d" && RUSTFLAGS="--cfg loom" timeout "${LOOM_TIMEOUT:-1800}" cargo test "${args[@]}" "$t" -- --exact > "${LOOM_LOG_DIR:-/tmp}/loom_${COMP}_$t.log" 2>&1)
   local rc=$?
   (( rc == 0 || rc == 124 )) && return $rc
-  grep -q "test result: FAILED" "${LOOM_LOG_DIR:-/tmp}/loom_${COMP}_$t.log" && return 1   # the test ran and failed
-  return 2                                                                                  # it did not build/run
+  # A build failure shows compiler/build-script errors; anything else non-zero means the test RAN and failed -
+  # a Loom violation can end in "test result: FAILED" or, when a destructor panics during unwinding, in SIGABRT.
+  grep -E "could not compile|failed to run custom build command|^error(\[E[0-9]+\])?: " \
+    "${LOOM_LOG_DIR:-/tmp}/loom_${COMP}_$t.log" | grep -qv "^error: test failed" && return 2  # it did not build
+  return 1                                                                                  # it ran and failed
 }
 
 # 1. REAL
