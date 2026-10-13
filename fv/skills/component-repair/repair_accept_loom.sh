@@ -14,6 +14,7 @@
 set -uo pipefail
 REPO="${1:?usage: repair_accept_loom.sh <repo> <component> <ID> <base>}"; COMP="${2:?}"; OBL="${3:?}"; BASE="${4:?}"
 export PATH="$HOME/.cargo/bin:$PATH"
+source "$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)/layout.sh"
 CDIR="$REPO/components/$COMP"; LDIR="$CDIR/verif-loom"
 PKG="$(sed -nE 's/^name[[:space:]]*=[[:space:]]*"([^"]+)".*/\1/p' "$CDIR/Cargo.toml" | head -1)"
 T="verify_$(tr 'A-Z-' 'a-z_' <<<"$OBL")"
@@ -60,7 +61,7 @@ else
     cp "$REPO/$t" "$TMPR/base/$t"; printf '\n#[cfg(test)]\n#[path = "%s"]\nmod %s;\n' "$b" "${b%.rs}" >> "$TMPR/base/${host#$REPO/}"
   done
   if (( rf_ok )); then
-    bout="$(cd "$TMPR/base" && timeout 1800 cargo test -q -p "$PKG" repair_test_ 2>&1)"
+    bout="$(cd "$TMPR/base" && timeout 1800 cargo test -q -p "$PKG" $(test_features "$CDIR") repair_test_ 2>&1)"
     if grep -qE 'failed to run custom build command|could not find native static library' <<<"$bout" && ! grep -q 'test result:' <<<"$bout"; then
       echo "  2. RED-FIRST : ENVIRONMENT - the unfixed code could not be built here (a native library is missing)"; fail=1
     elif grep -qE 'error(\[E[0-9]+\])?: ' <<<"$bout" && ! grep -q 'test result:' <<<"$bout"; then

@@ -84,7 +84,7 @@ for c in $TOUCHED; do
   p="$(pkg "$c")"; [[ -z "$p" ]] && continue
   ok_runs=0; n=0; bad=""
   for r in $(seq 1 "$RUNS"); do
-    tout="$(cd "$REPO" && timeout 1800 cargo test -q -p "$p" 2>&1)"
+    tout="$(cd "$REPO" && timeout 1800 cargo test -q -p "$p" $(test_features "$REPO/components/$c") 2>&1)"
     if grep -q 'test result: ok' <<<"$tout" && ! grep -qE 'test result: FAILED|^error' <<<"$tout"; then
       ok_runs=$((ok_runs+1)); n=$(grep -oE '[0-9]+ passed' <<<"$tout" | awk '{s+=$1} END {print s+0}')
     else bad="$tout"; break; fi

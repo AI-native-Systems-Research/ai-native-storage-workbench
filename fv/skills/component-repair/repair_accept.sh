@@ -81,7 +81,7 @@ else
     printf '\n#[cfg(test)]\n#[path = "%s"]\nmod %s;\n' "$b" "${b%.rs}" >> "$TMPR/base/$rel"
   done
   if (( rf_ok )); then
-    bout="$(cd "$TMPR/base" && timeout 1800 cargo test -q -p "$PKG" repair_test_ 2>&1)"
+    bout="$(cd "$TMPR/base" && timeout 1800 cargo test -q -p "$PKG" $(test_features "$CDIR") repair_test_ 2>&1)"
     if grep -qE 'failed to run custom build command|could not find native static library|SPDK .* not found' <<<"$bout" \
        && ! grep -q 'test result:' <<<"$bout"; then
       echo "  2b RED-FIRST: ENVIRONMENT — the unfixed code could not be BUILT here (a native library is missing), so the"
@@ -101,7 +101,7 @@ else
 fi
 
 # 3. TESTED
-tout="$(cd "$REPO" && timeout 1800 cargo test -q -p "$PKG" 2>&1)"
+tout="$(cd "$REPO" && timeout 1800 cargo test -q -p "$PKG" $(test_features "$CDIR") 2>&1)"
 if grep -qE 'test result: FAILED|error(\[E[0-9]+\])?:' <<<"$tout" || ! grep -q 'test result: ok' <<<"$tout"; then
   echo "  3. TESTED   : NO"; grep -E 'panicked at|test result|error' <<<"$tout" | head -5 | sed 's/^/       │ /'; fail=1
 else
