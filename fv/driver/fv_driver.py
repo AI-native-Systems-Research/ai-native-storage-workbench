@@ -236,7 +236,7 @@ DD_KEYS = ("spec_says", "code_does", "code_pointers", "methods", "assume", "assu
 
 
 def validate_sync(rep, d):
-    """Return a list of problems with a sync report; empty = apply it."""
+    """Return a list of problems with a level1-check report; empty = apply it."""
     P = {p.get("id"): p for p in d.get("properties", [])}
     errs = []
     for r in rep.get("reclassify_divergent") or []:
@@ -254,22 +254,22 @@ def validate_sync(rep, d):
     return errs
 
 
-def step_sync(a):
-    """Level-1 sync check: one agent reports -> the driver validates and applies it -> level1 -> page."""
+def step_level1_check(a):
+    """level1-check (Level 1, after extraction): one agent reports -> the driver validates and applies it -> level1 -> page."""
     checkout, verif, branch = preflight(a.checkout, a.component)
-    run = Run(verif, "sync")
+    run = Run(verif, "level1-check")
     run.event("start", component=a.component, branch=branch, checkout_commit=commit_of(checkout))
     import shutil, yaml
     bundle = verif / "unified_properties.yaml"
     d = yaml.safe_load(open(bundle))
     comp_dir = checkout / "components" / a.component
     out = verif / ".run" / "sync_check.yaml"
-    prompt = (PROMPTS / "sync.md").read_text().format(
+    prompt = (PROMPTS / "level1_check.md").read_text().format(
         component=a.component, out=out, bundle=bundle, specs=comp_dir / "specs", src=comp_dir / "src",
         interfaces=checkout / "components" / "interfaces" / "src", spec_props=verif / "spec_properties.yaml",
         code_props=verif / "code_properties.yaml",
         skill=FV / "skills" / "build-property-inventory" / "SKILL.md")
-    (run.dir / "prompt_sync.md").write_text(prompt)
+    (run.dir / "prompt_level1_check.md").write_text(prompt)
     run.rec["prompt_sync_sha256"] = hashlib.sha256(prompt.encode()).hexdigest()[:16]
     if a.dry_run:
         run.event("dry-run", would_write=out)
@@ -277,7 +277,7 @@ def step_sync(a):
         return 0
     before = set(changed_files(checkout))
     ok, text, dt = agent(prompt, checkout, ["Read", "Grep", "Glob", "Write"], model=a.model,
-                         timeout=a.timeout, log=run.dir / "agent_sync.log", name="sync",
+                         timeout=a.timeout, log=run.dir / "agent_level1_check.log", name="level1_check",
                          policy={"writable": [str(out)], "stop_check": selfcheck_cmd("yaml", out)})
     run.event("agent", ok=ok, seconds=dt)
     stray = [f for f in set(changed_files(checkout)) - before if "/.run/" not in f]
@@ -286,7 +286,7 @@ def step_sync(a):
         run.save("failed: stray writes")
         return 1
     if not ok or not out.exists():
-        run.event("FAIL", reason="no sync report", detail=text[-300:])
+        run.event("FAIL", reason="no level1-check report", detail=text[-300:])
         run.save("failed: no report")
         return 1
     try:
@@ -1214,7 +1214,7 @@ def main():
     c.add_argument("checkout"); c.add_argument("component")
     c.add_argument("--dry-run", action="store_true"); c.add_argument("--model", default=None)
     c.add_argument("--timeout", type=int, default=1800)
-    s = sub.add_parser("sync")
+    s = sub.add_parser("level1-check", aliases=["sync"])   # "sync": the old name
     s.add_argument("checkout"); s.add_argument("component")
     s.add_argument("--dry-run", action="store_true"); s.add_argument("--model", default=None)
     s.add_argument("--timeout", type=int, default=2400)
@@ -1254,8 +1254,8 @@ def main():
     if a.cmd == "check":
         ok, _ = step_check(a.checkout, a.component)
         return 0 if ok else 1
-    if a.cmd == "sync":
-        return step_sync(a)
+    if a.cmd in ("level1-check", "sync"):
+        return step_level1_check(a)
     return step_classify(a)
 
 

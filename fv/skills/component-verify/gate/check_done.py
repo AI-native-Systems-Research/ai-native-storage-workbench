@@ -2,7 +2,7 @@
 """DEFINITION OF DONE for one component's verification bundle — prints DONE or the exact missing steps.
 
 Cornel (2026-10-07): progress was hard to see because "done" was never defined; a component was "published", then
-"needs a sync check", then "needs a re-score". This script is the single answer. It checks a verif/ directory (a
+"needs a level1-check", then "needs a re-score". This script is the single answer. It checks a verif/ directory (a
 branch checkout or a SEPT_28 folder) against the CURRENT method and never edits anything.
 
 A component is DONE when:
@@ -50,7 +50,7 @@ def check(vd):
     uncls = [p["id"] for p in cand if p["id"] not in cls]
     if cand and not cls:
         miss.append(f"CLS: classifier has not run on {len(cand)} candidates")
-    elif uncls:   # e.g. records a later sync check reclassified as divergent (found by the driver, 2026-10-09)
+    elif uncls:   # e.g. records a later level1-check reclassified as divergent (found by the driver, 2026-10-09)
         miss.append(f"CLS: {len(uncls)} candidate(s) not classified yet (e.g. {uncls[0]})")
     rpd = d.get("level2_reprove") or {}
     if isinstance(rpd, list):

@@ -1,7 +1,7 @@
 You run the Level-1 SYNC CHECK for the component `{component}`. You may READ anything, but WRITE only one file:
 `{out}`. Do not edit the bundle or any other file - the driver applies your report.
 
-Read first and follow exactly the section "LEVEL 1 — the spec<->code sync check" of {skill}
+Read first and follow exactly the section "LEVEL 1 — the spec<->code check (level1-check)" of {skill}
 (check 1 = merge check, check 2 = input-range check in BOTH directions).
 
 Inputs: the bundle {bundle} (its properties with `origin: spec+code` are the merged records to check), the

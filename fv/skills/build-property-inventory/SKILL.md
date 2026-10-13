@@ -184,7 +184,7 @@ depending on an agent being careful:
 Measured outcome doing it this way: 0 orphans, 0 double-use, 0 ghosts across 147 input ids, and the
 assembly step cannot misplace a property because it never makes a judgement.
 
-## LEVEL 1 — the spec<->code sync check (mandatory, after reconciliation; 2026-10-04)
+## LEVEL 1 — the spec<->code check (level1-check) (mandatory, after reconciliation; 2026-10-04)
 
 Reconciliation produces the unified records. **Level 1 then CHECKS them**, read-only, before anything
 reaches a prover. It is not enough to trust the origin labels: on extent-manager the reconciler produced

@@ -4,7 +4,7 @@
     python3 fv/agent/fv_agent.py verify  <checkout> <component> [--rounds 2] [--tools creusot,kani] [--model M]
     python3 fv/agent/fv_agent.py publish <checkout> <component> [--date YYYYMMDD]
 
-The SEQUENCE is code (fv/driver): extract -> sync -> classify -> prove (each tool) -> check. The agent's own judgement
+The SEQUENCE is code (fv/driver): extract -> level1-check -> classify -> prove (each tool) -> check. The agent's own judgement
 is used in exactly one place, the SUPERVISOR: when check_done is not DONE, one Claude call chooses ONE action from a
 fixed menu - retry named ids for one tool, or stop with a reason for a person. It cannot skip a step, write a status,
 edit the gate, push, or touch production code; the driver enforces all of that. Rounds are bounded.
@@ -104,7 +104,7 @@ def cmd_verify(a):
     if not (verif / "unified_properties.yaml").exists():
         if step("extract", "extract", co, c, *(["--model", a.model] if a.model else [])):
             return finish(record, verif, "stopped: extract failed", t0)
-    for name in ("sync", "classify"):
+    for name in ("level1-check", "classify"):
         if step(name, name, co, c, *(["--model", a.model] if a.model else [])):
             return finish(record, verif, f"stopped: {name} failed", t0)
     for t in tools:

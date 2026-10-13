@@ -14,10 +14,10 @@ fv/agent/fv_runtime.py   RUNS JOBS unattended: a job queue per machine, a memory
      │                   budget, a heartbeat, resume after a crash, one status table across machines
      ▼
 fv/agent/fv_agent.py     the FV AGENT: verifies ONE component end to end -
-     │                   extract -> sync -> classify -> prove (each tool) -> check -> supervisor -> publish
+     │                   extract -> level1-check -> classify -> prove (each tool) -> check -> supervisor -> publish
      ▼
 fv/driver/fv_driver.py   the STEPS. Each step starts one Claude session, limited by hooks (what it may write, what it
-                         may run), then checks the result in code. Steps: extract, sync, classify, prove, check, repair.
+                         may run), then checks the result in code. Steps: extract, level1-check, classify, prove, check, repair.
                          The REPAIR AGENT is the `repair` step (not yet called by the FV agent; run it directly).
 
 fv/skills/...            what the agents are told (methodology), and the GATE - the scripts that score and decide
@@ -56,22 +56,25 @@ agent pairs the two lists; the driver builds the merged list from that pairing a
 python3 fv/driver/fv_driver.py extract ~/certus-checkout zyre
 ```
 
-### 2. sync - do spec and code really agree?
-An agent re-checks every "spec and code agree" pair against the code and reports hidden **code assumptions** (e.g. "the
-message contains no newline"). The driver validates the report and applies it.
+### 2. level1-check - do spec and code really agree? (Level 1)
+Right after extraction, an agent re-reads the code for every pair the reconciliation called "spec and code agree". A
+pair that does not really agree becomes a disagreement (its old label is kept). It also lists the code's **hidden
+assumptions** - things the code relies on that the spec does not say (e.g. "the message contains no newline"); proofs
+are made under them, and they are reported. The driver validates the agent's report and applies it. **Nothing in the
+spec or the code is changed** - this is not spec-kit's sync, which updates the spec. (The old name `sync` still works.)
 - **Needs:** the bundle from extract.
-- **Uses:** prompt `driver/prompts/sync.md`, skill `skills/build-property-inventory/SKILL.md`; gate scripts `level1.py`,
-  `render_discordances.py`.
+- **Uses:** prompt `driver/prompts/level1_check.md`, skill `skills/build-property-inventory/SKILL.md` (section
+  "LEVEL 1 - the spec<->code check"); gate scripts `level1.py`, `render_discordances.py`.
 - **Writes:** reclassified records (with their old origin kept), `domain_discordances` (code assumptions),
   `verif/discordances.yaml`, `<c>_discordances.html`.
 ```
-python3 fv/driver/fv_driver.py sync ~/certus-checkout zyre
+python3 fv/driver/fv_driver.py level1-check ~/certus-checkout zyre
 ```
 
 ### 3. classify - what to do with each disagreement?
 Two independent classifier agents sort every disagreement: **A** prove it, **B** a bug for the repair agent, **C**
 another tool. Where they disagree, it goes to a person.
-- **Needs:** the bundle after sync.
+- **Needs:** the bundle after level1-check.
 - **Uses:** prompt `driver/prompts/classifier.md`, rubric `skills/component-verify/gate/classify_rubric.yaml`; gate
   `classify_merge.py`, `level1.py`, `render_discordances.py`, `check_done.py`.
 - **Writes:** `classification` in the bundle, `level2_excluded` (what the provers do not attempt), refreshed pages.

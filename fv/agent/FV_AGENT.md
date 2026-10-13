@@ -8,12 +8,12 @@ decides what counts.
 
 ## The steps (run by code, in this order)
 ```
-extract  ->  sync  ->  classify  ->  prove (Creusot)  ->  prove (Kani)  ->  check  ->  supervisor (<= 2 rounds)  ->  publish
+extract  ->  level1-check  ->  classify  ->  prove (Creusot)  ->  prove (Kani)  ->  check  ->  supervisor (<= 2 rounds)  ->  publish
 ```
 | step | what happens | who decides |
 |---|---|---|
 | extract | Two **blind readers**: one sees only the spec, the other only the code. Each lists the component's verifiable properties. A third agent pairs the two lists (same / different / spec-only / code-only); the driver builds the merged list from that pairing. | the driver checks every input id is used exactly once |
-| sync | An agent re-checks each "spec and code agree" pair against the code. It also finds **code assumptions** (e.g. "the message contains no newline"). | the driver validates the report and applies it |
+| level1-check | An agent re-checks each "spec and code agree" pair against the code (Level 1; it changes neither spec nor code - not spec-kit's sync). It also finds **code assumptions** (e.g. "the message contains no newline"). | the driver validates the report and applies it |
 | classify | Two independent agents sort every disagreement into **A** prove it, **B** a bug for the repair agent, **C** another tool. When they disagree, the case goes to a person. | the merge rule |
 | prove | One agent per tool writes proofs, each with a **mutant twin** that must fail. Proofs can also be **refutations**: a proof that the code breaks the property. | the **scorer**, by re-running every proof itself |
 | check | The definition of done: every candidate classified, every property scored, no proof older than a code assumption it depends on, no contradiction between the two tools. | `check_done.py` |
@@ -38,7 +38,7 @@ python3 fv/agent/fv_runtime.py worker --once        # or leave a worker running 
 python3 fv/agent/fv_runtime.py status --machines this,node7
 ```
 or one component directly: `python3 fv/agent/fv_agent.py verify <checkout> <component>`.
-Each step can also be run on its own: `python3 fv/driver/fv_driver.py {extract|sync|classify|prove|check} ...`.
+Each step can also be run on its own: `python3 fv/driver/fv_driver.py {extract|level1-check|classify|prove|check|repair} ...`.
 
 ## What it produces
 `components/<c>/verif/`: spec_properties.yaml, code_properties.yaml, unified_properties.yaml (every status, with
@@ -57,4 +57,4 @@ step leaves a provenance record in `verif/.run/driver/`.
 ## Known limits
 - Kani coverage on a new component is limited by harness size and state cost (finding FND-23). We accept Creusot
   plus the Kani we have, and use Kani as an independent second check.
-- One sync pass misses some disagreements; repeated passes keep finding new ones (finding FND-19).
+- One level1-check pass misses some disagreements; repeated passes keep finding new ones (finding FND-19).

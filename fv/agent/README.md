@@ -8,7 +8,7 @@ python3 fv/agent/fv_agent.py verify  <checkout> <component> [--tools creusot,kan
 python3 fv/agent/fv_agent.py publish <checkout> <component>        # two LOCAL verif branches; never pushes
 ```
 The sequence is code (fv/driver): extract (two blind readers in sandboxes that contain only their side, then
-reconcile) -> sync -> classify -> prove each tool -> check. The agent's judgement is used only in the supervisor,
+reconcile) -> level1-check -> classify -> prove each tool -> check. The agent's judgement is used only in the supervisor,
 which picks ONE action from a fixed menu (retry named ids for one tool, or stop with a reason for a person), for a
 bounded number of rounds. It cannot skip a step, write a status, edit the gate, push, or touch production code.
 

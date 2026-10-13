@@ -172,7 +172,7 @@ def main():
             entry["classified"] = "classifiers disagree - needs a person"
         disc.append(entry)
         excluded.append(p["id"])
-    # INPUT-RANGE MISMATCHES (the level-1 sync check, build-property-inventory step 2): one entry each,
+    # INPUT-RANGE MISMATCHES (the level1-check, build-property-inventory step 2): one entry each,
     # however many properties depend on them. Those properties stay in level 2 and are proved UNDER the
     # narrower range (`assume`), so the mismatch is reported once here instead of rediscovered as
     # dozens of refutations (extent-manager: 28 of 75 refutations were one such mismatch).
