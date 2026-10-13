@@ -844,7 +844,7 @@ PROOF_STEP_LOOM = """4. **Make the fix verified over all thread interleavings** 
    `verify_{pid}` must PASS and `verify_{pid}__mutant` must still FAIL. Do not weaken the test or the twin, and do
    not add a preemption bound the test did not have. If `verif-creusot/` mirrors a function you changed, update
    that model too (the check requires it)."""
-REPORT_SECTIONS = ("## Bug", "## Impact", "## How to reproduce", "## Fix", "## Scope beyond the finding", "## Risk")
+REPORT_SECTIONS = ("## In short", "## Bug", "## Impact", "## How to reproduce", "## Fix", "## Scope beyond the finding", "## Risk")
 
 
 def step_repair(a):
@@ -1103,8 +1103,11 @@ def fix_record(c, finding, pid, rec, base, branch, attempts, seconds, report, or
     eff = "\n".join(f"| {x['attempt']} | {round(x['agent_s'] / 60)} min | {round(x['oracle_s'] / 60)} min | "
                     f"{'accepted' if x['rc'] == 0 else ('stopped by the agent' if x['rc'] is None else 'rejected')} |"
                     for x in attempts)
+    m = re.search(r"## In short\s*\n(.*?)(?=\n## |\Z)", rep, re.S)
+    short = ("> **In short** - " + " ".join(l.strip() for l in m.group(1).strip().splitlines() if l.strip()) + "\n\n") if m else ""
     return f"""# fix_{c}_{finding}
 
+{short}
 ```
 component:      {c}
 finding:        {finding}
