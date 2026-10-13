@@ -27,6 +27,10 @@ loom_test() {   # <crate dir> <test name> -> rc 0 pass / 1 fail / 124 timeout / 
   local args=(--release -q)
   [[ "$f" == "$d/tests/"* ]] && args+=(--test "$(basename "$f" .rs)") || args+=(--lib)
   (cd "$d" && RUSTFLAGS="--cfg loom" timeout "${LOOM_TIMEOUT:-1800}" cargo test "${args[@]}" "$t" -- --exact > "${LOOM_LOG_DIR:-/tmp}/loom_${COMP}_$t.log" 2>&1)
+  local rc=$?
+  (( rc == 0 || rc == 124 )) && return $rc
+  grep -q "test result: FAILED" "${LOOM_LOG_DIR:-/tmp}/loom_${COMP}_$t.log" && return 1   # the test ran and failed
+  return 2                                                                                  # it did not build/run
 }
 
 # 1. REAL
@@ -72,7 +76,8 @@ if [[ -d "$TMPR/base/components/$COMP/verif-loom" ]]; then
     1) echo "  3. WAS BROKEN: yes (Loom finds the violation on the unfixed code)";;
     0) echo "  3. WAS BROKEN: NO - $T PASSES on the unfixed code, so it does not show the defect"; fail=1;;
     124) echo "  3. WAS BROKEN: NO - timed out on the unfixed code"; fail=1;;
-    *) echo "  3. WAS BROKEN: NO - $T is not in the base Loom crate (commit the Loom crate with the base)"; fail=1;;
+    3) echo "  3. WAS BROKEN: NO - $T is not in the base Loom crate (commit the Loom crate with the base)"; fail=1;;
+    *) echo "  3. WAS BROKEN: NO - the base Loom crate did not build or run (log ${LOOM_LOG_DIR:-/tmp}/loom_${COMP}_$T.log)"; fail=1;;
   esac
 else echo "  3. WAS BROKEN: NO - no verif-loom crate at the base commit"; fail=1; fi
 git -C "$REPO" worktree remove --force "$TMPR/base"; rm -rf "$TMPR"
