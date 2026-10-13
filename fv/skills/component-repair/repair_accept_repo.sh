@@ -141,7 +141,11 @@ for c in $TOUCHED; do
     W="$SCR/$side"
     if [[ ! -d "$W/components/$c/verif-creusot/src" && ! -f "$W/components/$c/verif/Cargo.toml" ]]; then
       ref="${PFX}${c}"; [[ "$has_branch" == o ]] && ref="origin/${PFX}${c}"
-      git -C "$W" checkout -q "$ref" -- "components/$c/verif-creusot" "components/$c/verif" 2>/dev/null
+      # one path at a time: an old-layout branch has no verif-creusot/, and a single checkout naming a missing
+      # path checks out NOTHING (extended-metadata-store, 2026-10-12: the baseline then proved nothing)
+      for pth in "components/$c/verif-creusot" "components/$c/verif"; do
+        git -C "$W" cat-file -e "$ref:$pth" 2>/dev/null && git -C "$W" checkout -q "$ref" -- "$pth"
+      done
     fi
     [[ -e "$REPO/components/$c/creusot" ]] && ln -sfn "$(readlink -f "$REPO/components/$c/creusot")" "$W/components/$c/creusot"
     B="$W/components/$c/verif/unified_properties.yaml"
