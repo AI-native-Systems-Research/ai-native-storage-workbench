@@ -858,6 +858,19 @@ def step_repair(a):
         raise SystemExit(f"components/{c} has uncommitted changes: commit the base first (the check compares "
                          "against a commit)")
     base = git(checkout, "rev-parse", "HEAD")
+    # The environment a repair needs, set up here rather than by hand (three repairs were blocked or misjudged by a
+    # missing link): the gitignored native libraries and the component's creusot-std link.
+    deps_src = [Path(os.environ["CERTUS_DEPS_DIR"])] if os.environ.get("CERTUS_DEPS_DIR") else []
+    deps_src += [Path(os.environ.get("FV_CERTUS_REPO", os.path.expanduser("~/ai-native-storage-certus"))) / "deps", Path("/opt")]
+    linked = []
+    for n in ("spdk", "spdk-build", "zyre-build"):
+        dst = checkout / "deps" / n
+        src = next((x / n for x in deps_src if (x / n).exists() and (x / n).resolve() != dst.resolve()), None)
+        if (checkout / "deps").is_dir() and not dst.exists() and src:
+            os.symlink(src.resolve(), dst); linked.append(n)
+    cl = checkout / "components" / c / "creusot"
+    if not cl.exists() and Path(CREUSOT_STD).exists():
+        os.symlink(CREUSOT_STD, cl); linked.append(f"components/{c}/creusot")
     d = yaml.safe_load(open(verif / "unified_properties.yaml"))
     P = {p["id"]: p for p in d["properties"]}
     pids = [x.strip() for x in pid.split(",") if x.strip()]      # several properties = one root cause, one repair
@@ -891,7 +904,8 @@ def step_repair(a):
     if len(pids) > 1:
         proof_step += ("\n   Do this for EACH <id>: " + ", ".join(f"`{x.lower().replace('-', '_')}`" for x in pids)
                        + " - one proof and one failing twin per property; the check requires all of them.")
-    run.event("start", component=c, property=pid, finding=finding, base=base[:12], branch=branch, target=target)
+    run.event("start", component=c, property=pid, finding=finding, base=base[:12], branch=branch, target=target,
+              linked=linked or None)
     tools = "; ".join(f"{t}: {(rec.get(t) or {}).get('status') or 'unscored'} - "
                       f"{str((rec.get(t) or {}).get('note') or '')[:300]}" for t in ("creusot", "kani"))
     comp = checkout / "components" / c
