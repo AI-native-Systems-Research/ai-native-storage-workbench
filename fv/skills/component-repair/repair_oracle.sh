@@ -71,7 +71,8 @@ VERIFY="verify_${slug}"
 MUTANT="verify_${slug}__mutant"
 REFUTE="refute_${slug}"
 
-CRATE="$COMPONENT_DIR/verif-creusot"
+source "$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)/layout.sh"
+CRATE="$COMPONENT_DIR/$(creusot_crate "$COMPONENT_DIR")"
 [[ -d "$CRATE" ]] || { echo "ORACLE: FAIL — no Creusot crate at $CRATE"; exit 2; }
 
 # Forced replay. why3find caches by goal, so without -f a source change can be judged against the

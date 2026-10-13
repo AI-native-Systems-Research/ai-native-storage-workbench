@@ -34,6 +34,7 @@ esac; shift; done
 export PATH="$HOME/.local/share/creusot/bin:$HOME/.cargo/bin:$PATH"
 # Resolve through symlinks: the agent calls this through a link in its own directory.
 HERE="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
+source "$HERE/layout.sh"
 # WHERE THE GATE IS (2026-10-05): resolved from this script's location, the gate was "" inside the
 # agent's run, the scorer could not even start ("can't open file '/scorer_creusot.py'"), and the old
 # leg E read the empty result as "0 lost". Explicit REPAIR_GATE_DIR first; fail at once if absent.
@@ -112,12 +113,13 @@ done; rm -f /tmp/ral_$$.log
 # D. MODEL  +  E. REVERIFY
 for c in $TOUCHED; do
   has_branch=$(git -C "$REPO" rev-parse -q --verify "${PFX}${c}" >/dev/null 2>&1 && echo y || (git -C "$REPO" rev-parse -q --verify "origin/${PFX}${c}" >/dev/null 2>&1 && echo o || echo n))
-  [[ -d "$REPO/components/$c/verif-creusot" || "$has_branch" != n ]] || { echo "  D/E        : $c has no published proof crate — not re-verified (say so in the PR)"; EVID+=("$c|re-verification|no proof crate published"); continue; }
+  CR="$(creusot_crate "$REPO/components/$c")"
+  [[ -d "$REPO/components/$c/verif-creusot" || -f "$REPO/components/$c/verif/Cargo.toml" || "$has_branch" != n ]] || { echo "  D/E        : $c has no published proof crate — not re-verified (say so in the PR)"; EVID+=("$c|re-verification|no proof crate published"); continue; }
   # D. functions whose body changed in src/, cited by name in the proof crate
   chg="$(git -C "$REPO" diff -U0 "$BASE" -- "components/$c/src" | grep -E '^@@' | sed -nE 's/.*@@ .*fn ([A-Za-z0-9_]+).*/\1/p' | sort -u)"
-  crate_changed=$(git -C "$REPO" diff --quiet "$BASE" -- "components/$c/verif-creusot/src" && echo n || echo y)
-  if [[ -d "$REPO/components/$c/verif-creusot/src" && -n "$chg" ]]; then
-    cited=""; for f in $chg; do grep -qE "\b$f\b" "$REPO/components/$c/verif-creusot/src/"*.rs 2>/dev/null && cited="$cited $f"; done
+  crate_changed=$(git -C "$REPO" diff --quiet "$BASE" -- "components/$c/$CR/src" && echo n || echo y)
+  if [[ -d "$REPO/components/$c/$CR/src" && -n "$chg" ]]; then
+    cited=""; for f in $chg; do grep -qE "\b$f\b" "$REPO/components/$c/$CR/src/"*.rs 2>/dev/null && cited="$cited $f"; done
     if [[ -n "$cited" && "$crate_changed" == n ]]; then
       echo "  D. MODEL   : $c NO — changed functions cited by the proof model, but the model was not updated:$cited"; fail=1
     else echo "  D. MODEL   : $c yes"; fi
@@ -137,7 +139,7 @@ for c in $TOUCHED; do
   BSHA="$(git -C "$REPO" rev-parse "$BASE")"
   for side in before after; do
     W="$SCR/$side"
-    if [[ ! -d "$W/components/$c/verif-creusot/src" ]]; then
+    if [[ ! -d "$W/components/$c/verif-creusot/src" && ! -f "$W/components/$c/verif/Cargo.toml" ]]; then
       ref="${PFX}${c}"; [[ "$has_branch" == o ]] && ref="origin/${PFX}${c}"
       git -C "$W" checkout -q "$ref" -- "components/$c/verif-creusot" "components/$c/verif" 2>/dev/null
     fi
@@ -145,7 +147,8 @@ for c in $TOUCHED; do
     B="$W/components/$c/verif/unified_properties.yaml"
     [[ -f "$B" ]] || { echo "  E. REVERIFY: $c NO — no bundle on the $side side"; fail=1; continue 2; }
     if [[ "$side" == before ]]; then
-      CTREE="$(cd "$W" && git ls-files -s "components/$c/verif-creusot/src" "components/$c/verif" 2>/dev/null | sha1sum | cut -c1-12)"
+      CRW="$(creusot_crate "$W/components/$c")"
+      CTREE="$(cd "$W" && git ls-files -s "components/$c/$CRW/src" "components/$c/verif" 2>/dev/null | sha1sum | cut -c1-12)"
       KEY="$CACHE/${c}_${BSHA:0:12}_${CTREE}_${GHASH}"
       if [[ -f "$KEY.yaml" && -f "$KEY.log" ]] && grep -q '^SUMMARY:' "$KEY.log" \
          && ! grep -qE "^SUMMARY: \{'proved': 0," "$KEY.log"; then
@@ -162,7 +165,7 @@ for p in d["properties"]:
         for k in ("status", "symbol", "_scored_by"): c.pop(k, None)
 yaml.safe_dump(d, open(sys.argv[1], "w"), sort_keys=False, allow_unicode=True, width=110)
 PY2
-    timeout 7200 python3 "$GATE/scorer_creusot.py" "$W/components/$c/verif" --crate-dir "$W/components/$c/verif-creusot" \
+    timeout 7200 python3 "$GATE/scorer_creusot.py" "$W/components/$c/verif" --crate-dir "$W/components/$c/$(creusot_crate "$W/components/$c")" \
         --cap-seconds 60 --cap-max 300 > "$SCR/gate_$side.log" 2>&1
     # keep the log: a re-verification nobody can inspect is not evidence
     LOGS="${REPAIR_GATE_LOG_DIR:-/tmp}"; cp "$SCR/gate_$side.log" "$LOGS/repair_gate_${c}_${side}.log" 2>/dev/null

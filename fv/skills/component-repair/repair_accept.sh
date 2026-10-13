@@ -35,7 +35,8 @@ while (( $# )); do case "$1" in --also) ALSO="${2:?}"; shift ;; *) echo "ACCEPT:
 export PATH="$HOME/.local/share/creusot/bin:$HOME/.cargo/bin:$PATH"
 HERE="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"   # through symlinks
 CDIR="$REPO/components/$COMP"
-CRATE="$CDIR/verif-creusot"
+source "$HERE/layout.sh"
+CR="$(creusot_crate "$CDIR")"; CRATE="$CDIR/$CR"
 PKG="$(sed -nE 's/^name[[:space:]]*=[[:space:]]*"([^"]+)".*/\1/p' "$CDIR/Cargo.toml" | head -1)"
 fail=0
 echo "ACCEPT: $OBL in $COMP (base $BASE)"
@@ -118,9 +119,9 @@ TMPB="$(mktemp -d)"; git -C "$REPO" worktree add -q --detach "$TMPB/base" "$BASE
 [[ -e "$CDIR/creusot" ]] && ln -sfn "$(readlink -f "$CDIR/creusot")" "$TMPB/base/components/$COMP/creusot"
 # the base side is the same for every call on the same base and crate: cache it (see repair_accept_repo.sh)
 CACHE="${REPAIR_GATE_CACHE:-$HOME/.cache/repair-gate}"; mkdir -p "$CACHE"
-KEY="$CACHE/unproved_${COMP}_$(git -C "$REPO" rev-parse "$BASE" | cut -c1-12)_$(cd "$TMPB/base" && git ls-files -s "components/$COMP/verif-creusot/src" | sha1sum | cut -c1-12)_$(creusot --version 2>/dev/null | sha1sum | cut -c1-8)"
+KEY="$CACHE/unproved_${COMP}_$(git -C "$REPO" rev-parse "$BASE" | cut -c1-12)_$(cd "$TMPB/base" && git ls-files -s "components/$COMP/$CR/src" | sha1sum | cut -c1-12)_$(creusot --version 2>/dev/null | sha1sum | cut -c1-8)"
 if [[ -f "$KEY" ]]; then before="$(cat "$KEY")"; echo "  4. (base-side whole-crate result reused from cache)"
-else before="$(unproved "$TMPB/base/components/$COMP/verif-creusot")"; [[ "$before" != NORUN ]] && printf '%s\n' "$before" > "$KEY"; fi
+else before="$(unproved "$TMPB/base/components/$COMP/$CR")"; [[ "$before" != NORUN ]] && printf '%s\n' "$before" > "$KEY"; fi
 after="$(unproved "$CRATE")"
 git -C "$REPO" worktree remove --force "$TMPB/base"; rm -rf "$TMPB"
 if [[ "$before" == NORUN || "$after" == NORUN ]]; then
