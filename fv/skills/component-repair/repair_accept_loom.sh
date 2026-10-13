@@ -91,7 +91,11 @@ loom_test "$LDIR" "$T"; rc=$?
 if [[ $rc -eq 0 ]]; then
   loom_test "$LDIR" "${T}__mutant"; mrc=$?
   case $mrc in
-    1) echo "  4. PROVED    : yes ($T passes over all interleavings; ${T}__mutant fails)";;
+    1) f="$(grep -rlE "fn ${T}\s*\(" "$LDIR/tests" "$LDIR/src" 2>/dev/null | head -1)"
+       b="$(grep -A3 -E "fn ${T}\s*\(" "$f" | grep -oE "[A-Z_]*BOUND" | head -1)"
+       bv="$( [[ -n "$b" ]] && grep -m1 -oE "const $b: Option<usize> = [^;]+" "$f" | sed 's/.*= //')"
+       if [[ -n "$bv" && "$bv" != None ]]; then sc="search: BOUNDED, at most ${bv#Some(} preemptions"; sc="${sc%)}"; else sc="search: all interleavings"; fi
+       echo "  4. PROVED    : yes ($T passes; ${T}__mutant fails; $sc)";;
     0) echo "  4. PROVED    : NO - the twin ${T}__mutant also passes: the test has no content"; fail=1;;
     3) echo "  4. PROVED    : NO - no twin ${T}__mutant"; fail=1;;
     *) echo "  4. PROVED    : NO - the twin did not finish (rc $mrc)"; fail=1;;

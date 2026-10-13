@@ -106,7 +106,7 @@ done; rm -f /tmp/rar_$$.log
 for t in "${LTARGETS[@]}"; do
   IFS=: read -r c id <<<"$t"
   if (cd "$REPO" && bash "$HERE/repair_accept_loom.sh" "$REPO" "$c" "$id" "$BASE") > /tmp/ral_$$.log 2>&1; then
-    echo "  C. TARGET   : $c $id yes (Loom)"; EVID+=("$c|$id (Loom)|violated before -> PROVED over all interleavings; twin fails; new test fails on the old code, passes on the new")
+    echo "  C. TARGET   : $c $id yes (Loom)"; EVID+=("$c|$id (Loom)|violated before -> PROVED in Loom's search ($(grep -m1 -oE "search: [a-z].*" /tmp/ral_$$.log | cut -c9- || echo "see the test for its preemption bound")); twin fails; new test fails on the old code, passes on the new")
   else echo "  C. TARGET   : $c $id NO (Loom)"; grep -E '^  [0-9]\.' /tmp/ral_$$.log | grep -E 'NO|ENVIRONMENT' | head -6 | sed 's/^/       │ /'; fail=1; EVID+=("$c|$id (Loom)|NOT accepted"); fi
 done; rm -f /tmp/ral_$$.log
 
