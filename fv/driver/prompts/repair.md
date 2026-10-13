@@ -21,7 +21,7 @@ DO THESE STEPS, IN ORDER:
    crate's `cargo test` FIVE times (the check does too: a flaky crash in any run rejects the repair).
 {proof_step}
 5. **Write {notes}/report.md** with these sections (plain English; it becomes the fix record and the PR text):
-   `## In short` (AT MOST 30 words, two lines: `Problem: ...` and `Fix: ...`, for a slide) /
+   `## In short` (40-50 words, two lines: `Problem: ...` (what went wrong and what a user would see) and `Fix: ...` (how it was fixed), for a slide) /
    `## Bug` (one sentence) / `## Impact` (what a user of the component would see) / `## How to reproduce`
    (2-3 steps a colleague can run) / `## Fix` (what changed, and the alternatives you rejected and why) /
    `## Scope beyond the finding` (any change not needed for THIS property - say "none" if none) /
