@@ -89,6 +89,32 @@ def supervise(checkout, component, report, history=(), model=None, timeout=900):
     return j
 
 
+def finished_run(verif, checkout, step, prefix, after=()):
+    """The run folder of `step` if its LATEST run succeeded (outcome starts with `prefix`) on the checkout's current
+    commit and is newer than the latest run of every step in `after` (whose output it read); else None.
+    Lets a restarted pipeline continue from the first unfinished step instead of repeating hours of reading."""
+    runs = verif / ".run" / "driver"
+    def latest(names):
+        found = sorted(p for n in names for p in runs.glob(f"*-{n}") if p.is_dir()) if runs.is_dir() else []
+        return found[-1] if found else None
+    last = latest([step] + (["sync"] if step == "level1-check" else []))
+    if last is None:
+        return None
+    try:
+        prov = json.loads((last / "provenance.json").read_text())
+    except (OSError, ValueError):
+        return None
+    start = next((e for e in prov.get("events", []) if e.get("what") == "start"), {})
+    head = sh(["git", "rev-parse", "--short", "HEAD"], cwd=checkout).stdout.strip()
+    if not str(prov.get("outcome", "")).startswith(prefix) or not head or start.get("checkout_commit") != head:
+        return None
+    for s in after:
+        prev = latest([s] + (["sync"] if s == "level1-check" else []))
+        if prev is not None and prev.name > last.name:
+            return None
+    return last
+
+
 def cmd_verify(a):
     co, c = Path(a.checkout).resolve(), a.component
     verif = co / "components" / c / "verif"
@@ -104,7 +130,14 @@ def cmd_verify(a):
     if not (verif / "unified_properties.yaml").exists():
         if step("extract", "extract", co, c, *(["--model", a.model] if a.model else [])):
             return finish(record, verif, "stopped: extract failed", t0)
+    done_prefix = {"level1-check": ("synced", ("extract",)), "classify": ("classified", ("extract", "level1-check"))}
     for name in ("level1-check", "classify"):
+        prefix, after = done_prefix[name]
+        prev = None if a.redo else finished_run(verif, co, name, prefix, after)
+        if prev is not None:
+            log(f"step {name}: already finished on this commit ({prev.name}) - reused; --redo repeats it")
+            record["steps"].append({"step": name, "rc": 0, "tail": f"reused {prev.name}"})
+            continue
         if step(name, name, co, c, *(["--model", a.model] if a.model else [])):
             return finish(record, verif, f"stopped: {name} failed", t0)
     for t in tools:
@@ -183,6 +216,7 @@ def main():
     v.add_argument("checkout"); v.add_argument("component")
     v.add_argument("--rounds", type=int, default=2); v.add_argument("--tools", default="creusot,kani")
     v.add_argument("--model", default=None)
+    v.add_argument("--redo", action="store_true", help="repeat level1-check and classify even if already finished")
     p = sub.add_parser("publish")
     p.add_argument("checkout"); p.add_argument("component")
     p.add_argument("--date", default=None); p.add_argument("--base", default="origin/unstable")

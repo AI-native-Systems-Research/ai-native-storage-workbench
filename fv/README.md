@@ -142,6 +142,9 @@ python3 fv/agent/fv_runtime.py submit zyre --checkout ~/certus-checkout --budget
 python3 fv/agent/fv_runtime.py worker --once                        # run the queued job (memory-capped)
 python3 fv/agent/fv_runtime.py status --machines this,node7
 ```
+A restarted `verify` continues where it stopped: extract, level1-check and classify are reused when their latest run
+finished on the same commit (`--redo` repeats them); proofs already written are re-scored, not rewritten. Large
+components: `FV_TIMEOUT_SCALE=2.5` scales every step's time box.
 
 ## Layout
 ```
