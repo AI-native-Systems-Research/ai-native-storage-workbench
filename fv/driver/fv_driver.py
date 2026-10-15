@@ -723,7 +723,10 @@ def step_prove(a):
         ids = sorted(set(unproved) | set(a_rows) | set(rp))
     else:
         ids = sorted(set(a_rows) | set(rp))
-    ids = [i for i in ids if i in P and i not in ex]
+    # --candidates: bug candidates (class B, excluded from proving) named with --ids are attempted too, to confirm
+    # or clear them on the real code before the repair agent (dispatcher, 2026-10-15)
+    cand = set(ids) & ex if (a.candidates and a.ids) else set()
+    ids = [i for i in ids if i in P and (i not in ex or i in cand)]
     run.event("work", a_rows=len(a_rows), reprove=len(rp), total=len(ids))
     if not ids:
         run.save("nothing to prove")
@@ -734,7 +737,10 @@ def step_prove(a):
     advisory = verif / f"{a.tool}_advisory.yaml"
     assumptions = "\n".join(f"- {x.get('id')}: {x.get('assume')}  [assume_rust: {x.get('assume_rust')}]"
                             for x in d.get("level2_assumptions") or []) or "(none)"
-    idlines = "\n".join(f"- {i}{'   (RE-PROOF under a new code assumption)' if i in rp else ''}" for i in ids)
+    CAND = ("   (BUG CANDIDATE: the classifiers judged that the code breaks this; if it does, the expected result is "
+            "a refutation refute_<id> with a reachable counterexample - never weaken the property)")
+    idlines = "\n".join("- " + i + ("   (RE-PROOF under a new code assumption)" if i in rp else "")
+                        + (CAND if i in cand else "") for i in ids)
     where = (f"{crate}" if crate != comp_dir else
              f"{comp_dir}/src/verification.rs ONLY (the #[cfg(kani)] harness file; every other file under src/ is "
              f"production code you must not touch)")
@@ -1239,6 +1245,7 @@ def main():
     pv.add_argument("--tool", choices=sorted(TOOLS), required=True)
     pv.add_argument("--ids", default=None, help="comma-separated ids (default: A rows + this tool's re-prove list)")
     pv.add_argument("--all", action="store_true", help="every level-2 property this tool has not scored yet")
+    pv.add_argument("--candidates", action="store_true", help="with --ids: also attempt named bug candidates (class B)")
     pv.add_argument("--dry-run", action="store_true"); pv.add_argument("--model", default=None)
     pv.add_argument("--score-only", action="store_true", help="skip the agent; fold + score what is in the crate")
     pv.add_argument("--timeout", type=int, default=tmo(7200), help="agent time box, seconds")

@@ -55,6 +55,9 @@ for n in spdk spdk-build; do [[ -e "$REPO/deps/$n" || ! -e "$DEPS/$n" ]] || ln -
 
 # A. BUILDS — touched crates and everything that depends on them
 TPKGS=""; for c in $TOUCHED; do p="$(pkg "$c")"; [[ -n "$p" ]] && TPKGS="$TPKGS $p"; done
+# Time box of each re-verification pass (before / after). Large components need more than 2 h for one full
+# Creusot scoring (dispatcher: ~3.5 h), so it scales with FV_TIMEOUT_SCALE; REPAIR_GATE_TIMEOUT overrides it.
+GATE_TIMEOUT="${REPAIR_GATE_TIMEOUT:-$(python3 -c "import os; print(int(7200*float(os.environ.get('FV_TIMEOUT_SCALE','1'))))")}"
 CHECK="$(cd "$REPO" && timeout 300 cargo metadata --format-version 1 --no-deps 2>/dev/null | python3 -c "
 import json, sys
 m = json.load(sys.stdin); pk = {p['name']: p for p in m['packages']}
@@ -128,15 +131,28 @@ for c in $TOUCHED; do
   #    Comparing against the PUBLISHED statuses is wrong: measured 2026-10-04 on EPO, it reported 12
   #    "lost" for a repair that lost nothing — 11 were properties now out of scope (level-1
   #    discordances, deliberately not scored) and 1 was rejected by a gate fix made after publication.
-  SCR="$(mktemp -d)"
-  git -C "$REPO" worktree add -q --detach "$SCR/before" "$BASE"
-  cp -a "$REPO" "$SCR/after"
   # The BEFORE side is identical on every oracle call for the same base: cache it (measured
   # 2026-10-05: one cold gate run is ~55 min, and the agent's 1 h budget expired inside the oracle).
   # The key covers everything that can change the result; any change is a miss.
   CACHE="${REPAIR_GATE_CACHE:-$HOME/.cache/repair-gate}"; mkdir -p "$CACHE"
   GHASH="$(cat "$GATE"/scorer_creusot.py "$GATE"/*.yaml 2>/dev/null | sha1sum | cut -c1-12)"
   BSHA="$(git -C "$REPO" rev-parse "$BASE")"
+  # The working folder is KEPT until a verdict is reached, keyed by base + fix + gate, and an interrupted pass
+  # continues with the scorer's --resume (2026-10-15, dispatcher: one full pass is ~3.5 h; a pass that hit its
+  # time box used to be deleted and started again from zero).
+  FIXH="$(cd "$REPO" && { git diff --binary "$BASE" -- "components/$c"; git ls-files -o --exclude-standard -z -- "components/$c" \
+          | grep -zv '/target/' | xargs -0 -r sha1sum; } | sha1sum | cut -c1-12)"
+  SCR="${REPAIR_GATE_WORK:-$HOME/.cache/repair-gate-work}/${c}_${BSHA:0:12}_${FIXH}_${GHASH}"
+  RESUME=""
+  if [[ -f "$SCR/.created" && -e "$SCR/before/.git" && -d "$SCR/after" ]]; then
+    RESUME="--resume"; echo "  E. resuming the re-verification kept in $SCR"
+  else
+    git -C "$REPO" worktree remove --force "$SCR/before" 2>/dev/null; rm -rf "$SCR"; git -C "$REPO" worktree prune
+    mkdir -p "$SCR"
+    git -C "$REPO" worktree add -q --detach "$SCR/before" "$BASE"
+    cp -a "$REPO" "$SCR/after"
+    touch "$SCR/.created"
+  fi
   for side in before after; do
     W="$SCR/$side"
     if [[ ! -d "$W/components/$c/verif-creusot/src" && ! -f "$W/components/$c/verif/Cargo.toml" ]]; then
@@ -160,7 +176,7 @@ for c in $TOUCHED; do
         echo "  E. (before side for $c reused from cache: same base, proof crate and gate)"; continue
       fi
     fi
-    python3 - "$B" <<'PY2'
+    [[ -z "$RESUME" ]] && python3 - "$B" <<'PY2'
 import sys, yaml
 d = yaml.safe_load(open(sys.argv[1]))
 for p in d["properties"]:
@@ -169,8 +185,8 @@ for p in d["properties"]:
         for k in ("status", "symbol", "_scored_by"): c.pop(k, None)
 yaml.safe_dump(d, open(sys.argv[1], "w"), sort_keys=False, allow_unicode=True, width=110)
 PY2
-    timeout 7200 python3 "$GATE/scorer_creusot.py" "$W/components/$c/verif" --crate-dir "$W/components/$c/$(creusot_crate "$W/components/$c")" \
-        --cap-seconds 60 --cap-max 300 > "$SCR/gate_$side.log" 2>&1
+    timeout "$GATE_TIMEOUT" python3 "$GATE/scorer_creusot.py" "$W/components/$c/verif" --crate-dir "$W/components/$c/$(creusot_crate "$W/components/$c")" \
+        --cap-seconds 60 --cap-max 300 $RESUME > "$SCR/gate_$side.log" 2>&1
     # keep the log: a re-verification nobody can inspect is not evidence
     LOGS="${REPAIR_GATE_LOG_DIR:-/tmp}"; cp "$SCR/gate_$side.log" "$LOGS/repair_gate_${c}_${side}.log" 2>/dev/null
     # Cache only a baseline that proved something: a before side that proved NOTHING is an environment fault
@@ -189,7 +205,7 @@ PY2
       tail -4 "$SCR/gate_$side.log" | sed 's/^/       │ /'; ran=0
     fi
   done
-  (( ran )) || { fail=1; EVID+=("$c|re-verification (Creusot gate, before vs after)|DID NOT RUN"); git -C "$REPO" worktree remove --force "$SCR/before" 2>/dev/null; rm -rf "$SCR"; continue; }
+  (( ran )) || { fail=1; EVID+=("$c|re-verification (Creusot gate, before vs after)|DID NOT RUN (kept for --resume: $SCR)"); continue; }
   if grep -qE "^SUMMARY: \{'proved': 0," "$SCR/gate_before.log"; then
     echo "  E. REVERIFY: $c ENVIRONMENT — the gate proved NOTHING on the unfixed code, so 'nothing lost' would be vacuous"
     echo "               (a proof crate that proves nothing at its own base is an environment fault, e.g. a missing creusot link)"
