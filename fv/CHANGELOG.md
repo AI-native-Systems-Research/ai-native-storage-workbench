@@ -28,3 +28,4 @@ One line per push, newest first. Details are in the commit messages (`git log --
 - 2026-10-09 - Import of the formal-verification kit from ai-native-storage-certus (`.claude/skills/` at 6397e046):
   orchestrator + gate, the two blind readers, Creusot and Kani proving skills, repair agent, setup skills (new:
   tools-kani-install), `fv/install.sh`. The Certus copies are frozen from here on.
+- 2026-10-14: driver - step agents may not start background work (helper agents, workflows, monitors, cron), which headless mode kills 10 min after the turn; FV_TIMEOUT_SCALE scales every step's time box for large components (dispatcher).

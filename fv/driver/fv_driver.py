@@ -76,6 +76,14 @@ FORBID_CMD = [r"\bgit\s+(push|commit|reset|checkout|switch|rebase)\b", r"cargo\s
               r"\bxargs\b[^|;&]*\s-P\s*([3-9]|\d{2,}|0)\b", r"\bparallel\b\s+-j\s*([3-9]|\d{2,})\b",
               r"\bcargo\s+kani\b[^|;&]*\s-j\s*([3-9]|\d{2,})\b",   # at most 2 provers at a time (X155)
               r"\brm\s+-rf\s+/(\s|$)", r"\bsudo\b"]
+def tmo(seconds):
+    """A step's default time box, scaled by FV_TIMEOUT_SCALE (e.g. 3 for a component three times the usual size)."""
+    return int(seconds * float(os.environ.get("FV_TIMEOUT_SCALE", "1")))
+
+
+# Tools a step's agent may not use: they start work that outlives its turn, or act outside its checkout.
+NO_BACKGROUND_TOOLS = ",".join(["Agent", "Task", "Workflow", "Monitor", "CronCreate", "ScheduleWakeup",
+                                "SendMessage", "EnterWorktree", "PushNotification"])
 
 
 def hook_settings(policy, workdir, rundir, name):
@@ -103,8 +111,11 @@ def agent(prompt, cwd, allowed_tools, model=None, timeout=1800, log=None, policy
     """Run ONE Claude agent headless (claude -p) and return (ok, text, seconds). With a policy, our guard hook checks
     every tool call as it happens and our stop hook runs the step's cheap check before the agent may finish.
     Kept in one place on purpose: switching to the Claude Agent SDK later changes only this function."""
+    # No helper agents or other background work: in headless mode a step that hands its work to background helpers
+    # ends its turn, and the helpers are stopped 10 min later with no report written (dispatcher level1-check,
+    # 2026-10-14). These tools are also outside our guard hook.
     cmd = ["claude", "-p", "--output-format", "json", "--permission-mode", "acceptEdits",
-           "--allowedTools", ",".join(allowed_tools)]
+           "--allowedTools", ",".join(allowed_tools), "--disallowedTools", NO_BACKGROUND_TOOLS]
     if policy is not None:
         cmd += ["--settings", str(hook_settings(policy, cwd, Path(log).parent if log else Path(cwd) / ".fv-hooks", name))]
     if model:
@@ -1213,15 +1224,15 @@ def main():
     c = sub.add_parser("classify")
     c.add_argument("checkout"); c.add_argument("component")
     c.add_argument("--dry-run", action="store_true"); c.add_argument("--model", default=None)
-    c.add_argument("--timeout", type=int, default=1800)
+    c.add_argument("--timeout", type=int, default=tmo(1800))
     s = sub.add_parser("level1-check", aliases=["sync"])   # "sync": the old name
     s.add_argument("checkout"); s.add_argument("component")
     s.add_argument("--dry-run", action="store_true"); s.add_argument("--model", default=None)
-    s.add_argument("--timeout", type=int, default=2400)
+    s.add_argument("--timeout", type=int, default=tmo(2400))
     ex = sub.add_parser("extract")
     ex.add_argument("checkout"); ex.add_argument("component")
     ex.add_argument("--dry-run", action="store_true"); ex.add_argument("--model", default=None)
-    ex.add_argument("--timeout", type=int, default=3600)
+    ex.add_argument("--timeout", type=int, default=tmo(3600))
     ex.add_argument("--fresh", action="store_true", help="re-run both readers even if lists from this commit exist")
     pv = sub.add_parser("prove")
     pv.add_argument("checkout"); pv.add_argument("component")
@@ -1230,8 +1241,8 @@ def main():
     pv.add_argument("--all", action="store_true", help="every level-2 property this tool has not scored yet")
     pv.add_argument("--dry-run", action="store_true"); pv.add_argument("--model", default=None)
     pv.add_argument("--score-only", action="store_true", help="skip the agent; fold + score what is in the crate")
-    pv.add_argument("--timeout", type=int, default=7200, help="agent time box, seconds")
-    pv.add_argument("--score-timeout", type=int, default=14400, help="scorer time box, seconds")
+    pv.add_argument("--timeout", type=int, default=tmo(7200), help="agent time box, seconds")
+    pv.add_argument("--score-timeout", type=int, default=tmo(14400), help="scorer time box, seconds")
     r = sub.add_parser("repair")
     r.add_argument("checkout"); r.add_argument("component")
     r.add_argument("--property", required=True, help="the refuted (or failing) property id")
@@ -1240,8 +1251,8 @@ def main():
     r.add_argument("--attempts", type=int, default=2); r.add_argument("--model", default=None)
     r.add_argument("--check-only", action="store_true", help="no agent: re-run the acceptance check on the repair on disk")
     r.add_argument("--loom", action="store_true", help="the property is proved with Loom (verif-loom/), not Creusot")
-    r.add_argument("--timeout", type=int, default=7200, help="agent time box per attempt, seconds")
-    r.add_argument("--oracle-timeout", type=int, default=10800, help="acceptance check time box, seconds")
+    r.add_argument("--timeout", type=int, default=tmo(7200), help="agent time box per attempt, seconds")
+    r.add_argument("--oracle-timeout", type=int, default=tmo(10800), help="acceptance check time box, seconds")
     k = sub.add_parser("check")
     k.add_argument("checkout"); k.add_argument("component")
     a = ap.parse_args()
