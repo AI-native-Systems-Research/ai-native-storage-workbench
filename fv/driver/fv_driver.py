@@ -871,7 +871,7 @@ def step_repair(a):
     import shutil, yaml
     checkout, verif, branch = preflight(a.checkout, a.component)
     c, pid = a.component, a.property
-    if not a.check_only and git(checkout, "status", "--porcelain", "--", f"components/{c}", check=False):
+    if not a.check_only and not a.continue_on_disk and git(checkout, "status", "--porcelain", "--", f"components/{c}", check=False):
         raise SystemExit(f"components/{c} has uncommitted changes: commit the base first (the check compares "
                          "against a commit)")
     base = git(checkout, "rev-parse", "HEAD")
@@ -941,6 +941,20 @@ def step_repair(a):
             if (prev[-1] / "agent" / f).exists():
                 shutil.copy2(prev[-1] / "agent" / f, notes / f)
         run.event("check-only", notes_from=prev[-1].name)
+    if a.continue_on_disk:
+        # continue an earlier repair whose work is still on disk (uncommitted): the next attempt starts from that
+        # work and from the earlier check's rejection, instead of from the base (dispatcher served-from,
+        # 2026-10-16: the fix passed every leg except red-first; only the test needed rewriting)
+        prev = sorted((x for x in (verif / ".run" / "driver").glob(f"*repair-{finding}") if x != run.dir),
+                      key=lambda x: x.name)
+        rej = sorted((p for x in prev for p in x.glob("oracle_*.txt")), key=lambda p: (p.parent.name, p.name))
+        if rej:
+            feedback = "\n".join(rej[-1].read_text(errors="replace").strip().splitlines()[-60:])
+        for f in ("problem.md", "report.md"):
+            src = next((x / "agent" / f for x in reversed(prev) if (x / "agent" / f).exists()), None)
+            if src:
+                shutil.copy2(src, notes / f)
+        run.event("continue", from_run=prev[-1].name if prev else None, rejection=rej[-1].parent.name if rej else None)
     for n in range(1, (1 if a.check_only else a.attempts) + 1):
         dt = 0
         if not a.check_only:
@@ -1257,6 +1271,8 @@ def main():
     r.add_argument("--callees", default=None, help="Creusot callee modules (default: from the property's evidence)")
     r.add_argument("--attempts", type=int, default=2); r.add_argument("--model", default=None)
     r.add_argument("--check-only", action="store_true", help="no agent: re-run the acceptance check on the repair on disk")
+    r.add_argument("--continue", dest="continue_on_disk", action="store_true",
+                   help="continue an earlier repair still on disk: start from its work and its last rejection")
     r.add_argument("--loom", action="store_true", help="the property is proved with Loom (verif-loom/), not Creusot")
     r.add_argument("--timeout", type=int, default=tmo(7200), help="agent time box per attempt, seconds")
     r.add_argument("--oracle-timeout", type=int, default=tmo(10800), help="acceptance check time box, seconds")

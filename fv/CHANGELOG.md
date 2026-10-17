@@ -32,3 +32,4 @@ One line per push, newest first. Details are in the commit messages (`git log --
 - 2026-10-14: FV agent - a restarted verify reuses level1-check and classify when their latest run finished on the same commit (--redo repeats them).
 - 2026-10-15: repair check - the re-verification time box scales with FV_TIMEOUT_SCALE (REPAIR_GATE_TIMEOUT overrides); its working folder is kept until a verdict (keyed by base + fix + gate) and an interrupted pass resumes with the scorer's --resume.
 - 2026-10-15: driver - prove --candidates: with --ids, also attempt named bug candidates (class B) to confirm or clear them before repair.
+- 2026-10-16: repair --continue: continue an earlier repair still on disk (its work + its last rejection) instead of starting from the base.
