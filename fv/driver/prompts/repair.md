@@ -16,6 +16,10 @@ DO THESE STEPS, IN ORDER:
    compile error), using the existing API. Put it in its own file
    `components/{component}/src/<module path>/repair_test_<name>.rs`, wired into the module it tests by
    `#[cfg(test)] #[path = "repair_test_<name>.rs"] mod repair_test_<name>;`. Run it and see it fail.
+   Write and run this test BEFORE you change any other source file: the check copies the test alone into the
+   unfixed code, so it may use only functions, fields and types that exist there. A helper you add in step 3 makes
+   it fail to compile, and the repair is rejected (two dispatcher repairs, 2026-10-15/16). If the test needs a
+   helper, put the helper inside the test file.
 3. **Fix the code** in `components/{component}/src/`. Fix the root cause wherever it occurs, not only the line
    the tool pointed at. Keep the change as small as the root cause allows. Run the test and see it pass; run the
    crate's `cargo test` FIVE times (the check does too: a flaky crash in any run rejects the repair).
