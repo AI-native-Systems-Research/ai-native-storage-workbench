@@ -2,6 +2,7 @@
 
 One line per push, newest first. Details are in the commit messages (`git log -- fv/`).
 
+- 2026-10-17 - Imported Daniel's Spin skills, tools-spin-model and tools-spin-sync (certus acd24025), with the J18 rule: every returned value is modelled or listed as "Left out" and checked on sync; README citations are re-derived on every sync; no-sudo Spin install.
 - 2026-10-13 - Repair step: several properties per repair, Loom targets (`--loom`, repair_accept_loom.sh), both
   published Creusot layouts, the component's test features, self-setup of native-library links, `--check-only`;
   the check rejects empty baselines and states Loom bounds; fix records open with In short + At a glance. Used to

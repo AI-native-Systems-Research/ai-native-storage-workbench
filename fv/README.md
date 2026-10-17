@@ -157,6 +157,7 @@ fv/skills/tools-verify-{creusot,kani}-with-properties/   the proving methodology
 fv/skills/component-repair/           the acceptance scripts; agent/ holds the earlier generated repair agent (superseded)
 fv/skills/refute-tool-boundary/, tools-aggregate-coverage-by-interface/, component-sweep/
 fv/skills/tools-{creusot,kani}-install/   prover setup
+fv/skills/tools-spin-{model,sync}/    Daniel's Spin/Promela skills (imported from certus acd24025), plus the J18 returned-values rule
 fv/install.sh        installs the skills into a target checkout (for the older skill-driven way of working)
 ```
 Settings: `FV_CREUSOT_BIN` (Creusot's binaries; default `~/.local/share/creusot/bin`), `CERTUS_DEPS_DIR` (native
