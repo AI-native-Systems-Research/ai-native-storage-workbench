@@ -32,6 +32,11 @@ while (( $# )); do case "$1" in
   *) echo "ACCEPT-REPO: FAIL — unknown arg $1"; exit 2 ;;
 esac; shift; done
 export PATH="$HOME/.local/share/creusot/bin:$HOME/.cargo/bin:$PATH"
+# A clean build environment: an inherited RUSTFLAGS (e.g. "--cfg loom" from a Loom step) or CARGO_TARGET_DIR
+# changes how every crate builds and makes the check reject a correct repair (dispatcher, 2026-10-18: the server
+# crate failed with tokio::net unresolved, and the Loom target ran in the wrong target dir). The Loom leg sets
+# --cfg loom itself.
+unset RUSTFLAGS CARGO_TARGET_DIR CARGO_ENCODED_RUSTFLAGS
 # Resolve through symlinks: the agent calls this through a link in its own directory.
 HERE="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
 source "$HERE/layout.sh"
