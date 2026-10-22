@@ -1,0 +1,129 @@
+  1:	proc  0 (:init::1) promotion_atomicity.pml:549 (state 17)	[k = 0]
+  1:	proc  0 (:init::1) promotion_atomicity.pml:564 (state 15)	[.(goto)]
+  1:	proc  0 (:init::1) promotion_atomicity.pml:551 (state 14)	[DO]
+  1:	proc  0 (:init::1) promotion_atomicity.pml:553 (state 3)	[dm_state[k] = DM_BLOCK_DEVICE]
+  1:	proc  0 (:init::1) promotion_atomicity.pml:554 (state 4)	[dm_read_ref[k] = 0]
+  1:	proc  0 (:init::1) promotion_atomicity.pml:555 (state 5)	[dm_write_ref[k] = 0]
+  1:	proc  0 (:init::1) promotion_atomicity.pml:556 (state 6)	[mt_allocated[k] = 0]
+  1:	proc  0 (:init::1) promotion_atomicity.pml:557 (state 7)	[slot_owner[k] = 0]
+  1:	proc  0 (:init::1) promotion_atomicity.pml:558 (state 8)	[promotion_success[k] = 0]
+  1:	proc  0 (:init::1) promotion_atomicity.pml:559 (state 9)	[inserts_in_gen[k] = 0]
+  1:	proc  0 (:init::1) promotion_atomicity.pml:560 (state 10)	[in_flight[k] = 0]
+  1:	proc  0 (:init::1) promotion_atomicity.pml:561 (state 11)	[k = (k+1)]
+  1:	proc  0 (:init::1) promotion_atomicity.pml:564 (state 15)	[.(goto)]
+  1:	proc  0 (:init::1) promotion_atomicity.pml:551 (state 14)	[DO]
+  1:	proc  0 (:init::1) promotion_atomicity.pml:553 (state 3)	[dm_state[k] = DM_BLOCK_DEVICE]
+  1:	proc  0 (:init::1) promotion_atomicity.pml:554 (state 4)	[dm_read_ref[k] = 0]
+  1:	proc  0 (:init::1) promotion_atomicity.pml:555 (state 5)	[dm_write_ref[k] = 0]
+  1:	proc  0 (:init::1) promotion_atomicity.pml:556 (state 6)	[mt_allocated[k] = 0]
+  1:	proc  0 (:init::1) promotion_atomicity.pml:557 (state 7)	[slot_owner[k] = 0]
+  1:	proc  0 (:init::1) promotion_atomicity.pml:558 (state 8)	[promotion_success[k] = 0]
+  1:	proc  0 (:init::1) promotion_atomicity.pml:559 (state 9)	[inserts_in_gen[k] = 0]
+  1:	proc  0 (:init::1) promotion_atomicity.pml:560 (state 10)	[in_flight[k] = 0]
+  1:	proc  0 (:init::1) promotion_atomicity.pml:561 (state 11)	[k = (k+1)]
+  1:	proc  0 (:init::1) promotion_atomicity.pml:564 (state 15)	[.(goto)]
+  1:	proc  0 (:init::1) promotion_atomicity.pml:551 (state 14)	[DO]
+  1:	proc  0 (:init::1) promotion_atomicity.pml:562 (state 13)	[goto :b8]
+  1:	proc  0 (:init::1) promotion_atomicity.pml:551 (state 16)	[break]
+Starting Evictor with pid 1
+  2:	proc  0 (:init::1) promotion_atomicity.pml:567 (state 18)	[(run Evictor())]
+Starting SsdEvictor with pid 2
+  3:	proc  0 (:init::1) promotion_atomicity.pml:569 (state 19)	[(run SsdEvictor())]
+  4:	proc  0 (:init::1) promotion_atomicity.pml:571 (state 20)	[t = 0]
+  5:	proc  0 (:init::1) promotion_atomicity.pml:573 (state 21)	[((t<3))]
+Starting LookupThread with pid 3
+  6:	proc  0 (:init::1) promotion_atomicity.pml:574 (state 22)	[(run LookupThread(t))]
+  7:	proc  0 (:init::1) promotion_atomicity.pml:575 (state 23)	[t = (t+1)]
+  8:	proc  0 (:init::1) promotion_atomicity.pml:573 (state 21)	[((t<3))]
+Starting LookupThread with pid 4
+  9:	proc  0 (:init::1) promotion_atomicity.pml:574 (state 22)	[(run LookupThread(t))]
+ 10:	proc  0 (:init::1) promotion_atomicity.pml:575 (state 23)	[t = (t+1)]
+ 11:	proc  0 (:init::1) promotion_atomicity.pml:573 (state 21)	[((t<3))]
+Starting LookupThread with pid 5
+ 12:	proc  0 (:init::1) promotion_atomicity.pml:574 (state 22)	[(run LookupThread(t))]
+ 13:	proc  0 (:init::1) promotion_atomicity.pml:575 (state 23)	[t = (t+1)]
+ 14:	proc  0 (:init::1) promotion_atomicity.pml:576 (state 24)	[((t>=3))]
+ 15:	proc  0 (:init::1) promotion_atomicity.pml:572 (state 28)	[break]
+ 16:	proc  5 (LookupThread:1) promotion_atomicity.pml:310 (state 1)	[k = (tid%2)]
+ 16:	proc  5 (LookupThread:1) promotion_atomicity.pml:311 (state 2)	[n = 0]
+ 17:	proc  5 (LookupThread:1) promotion_atomicity.pml:313 (state 3)	[((n<1))]
+ 17:	proc  5 (LookupThread:1) promotion_atomicity.pml:314 (state 4)	[n = (n+1)]
+ 17:	proc  5 (LookupThread:1) promotion_atomicity.pml:315 (state 5)	[ret = R_NONE]
+ 18:	proc  4 (LookupThread:1) promotion_atomicity.pml:310 (state 1)	[k = (tid%2)]
+ 18:	proc  4 (LookupThread:1) promotion_atomicity.pml:311 (state 2)	[n = 0]
+ 19:	proc  4 (LookupThread:1) promotion_atomicity.pml:313 (state 3)	[((n<1))]
+ 19:	proc  4 (LookupThread:1) promotion_atomicity.pml:314 (state 4)	[n = (n+1)]
+ 19:	proc  4 (LookupThread:1) promotion_atomicity.pml:315 (state 5)	[ret = R_NONE]
+ 20:	proc  3 (LookupThread:1) promotion_atomicity.pml:310 (state 1)	[k = (tid%2)]
+ 20:	proc  3 (LookupThread:1) promotion_atomicity.pml:311 (state 2)	[n = 0]
+ 21:	proc  3 (LookupThread:1) promotion_atomicity.pml:313 (state 3)	[((n<1))]
+ 21:	proc  3 (LookupThread:1) promotion_atomicity.pml:314 (state 4)	[n = (n+1)]
+ 21:	proc  3 (LookupThread:1) promotion_atomicity.pml:315 (state 5)	[ret = R_NONE]
+ 22:	proc  3 (LookupThread:1) promotion_atomicity.pml:320 (state 6)	[((dm_write_ref[k]==0))]
+ 23:	proc  3 (LookupThread:1) promotion_atomicity.pml:323 (state 9)	[((dm_state[k]==DM_BLOCK_DEVICE))]
+ 23:	proc  3 (LookupThread:1) promotion_atomicity.pml:324 (state 10)	[dm_read_ref[k] = (dm_read_ref[k]+1)]
+ 23:	proc  3 (LookupThread:1) promotion_atomicity.pml:324 (state 11)	[lres = L_BD]
+ 24:	proc  3 (LookupThread:1) promotion_atomicity.pml:343 (state 26)	[((lres==L_BD))]
+ 25:	proc  3 (LookupThread:1) promotion_atomicity.pml:346 (state 27)	[assert((dm_read_ref[k]>0))]
+ 25:	proc  3 (LookupThread:1) promotion_atomicity.pml:347 (state 28)	[dm_read_ref[k] = (dm_read_ref[k]-1)]
+ 25:	proc  3 (LookupThread:1) promotion_atomicity.pml:352 (state 30)	[alloc_failed = 0]
+ 25:	proc  3 (LookupThread:1) promotion_atomicity.pml:353 (state 31)	[tries = 0]
+ 26:	proc  3 (LookupThread:1) promotion_atomicity.pml:355 (state 32)	[(1)]
+ 26:	proc  3 (LookupThread:1) promotion_atomicity.pml:357 (state 33)	[ea = 0]
+ 27:	proc  3 (LookupThread:1) promotion_atomicity.pml:370 (state 99)	[else]
+ 28:	proc  3 (LookupThread:1) promotion_atomicity.pml:374 (state 106)	[else]
+ 29:	proc  3 (LookupThread:1) promotion_atomicity.pml:374 (state 107)	[(1)]
+ 30:	proc  2 (SsdEvictor:1) promotion_atomicity.pml:240 (state 1)	[(!(shutdown))]
+ 31:	proc  2 (SsdEvictor:1) promotion_atomicity.pml:242 (state 2)	[k = 0]
+ 31:	proc  2 (SsdEvictor:1) promotion_atomicity.pml:247 (state 6)	[bd = 0]
+ 32:	proc  2 (SsdEvictor:1) promotion_atomicity.pml:249 (state 7)	[((dm_write_ref[k]==0))]
+ 33:	proc  2 (SsdEvictor:1) promotion_atomicity.pml:251 (state 8)	[((dm_state[k]==DM_BLOCK_DEVICE))]
+ 33:	proc  2 (SsdEvictor:1) promotion_atomicity.pml:251 (state 9)	[bd = 1]
+ 34:	proc  2 (SsdEvictor:1) promotion_atomicity.pml:256 (state 15)	[(bd)]
+ 35:	proc  3 (LookupThread:1) promotion_atomicity.pml:382 (state 114)	[((!(mt_allocated[k])&&(mt_pool_used<2)))]
+ 35:	proc  3 (LookupThread:1) promotion_atomicity.pml:383 (state 115)	[assert((in_flight[k]==0))]
+ 35:	proc  3 (LookupThread:1) promotion_atomicity.pml:384 (state 116)	[assert((inserts_in_gen[k]==0))]
+ 35:	proc  3 (LookupThread:1) promotion_atomicity.pml:385 (state 117)	[inserts_in_gen[k] = 1]
+ 35:	proc  3 (LookupThread:1) promotion_atomicity.pml:386 (state 118)	[mt_allocated[k] = 1]
+ 35:	proc  3 (LookupThread:1) promotion_atomicity.pml:387 (state 119)	[mt_pool_used = (mt_pool_used+1)]
+ 35:	proc  3 (LookupThread:1) promotion_atomicity.pml:388 (state 120)	[slot_owner[k] = (tid+1)]
+ 35:	proc  3 (LookupThread:1) promotion_atomicity.pml:389 (state 121)	[in_flight[k] = (in_flight[k]+1)]
+ 35:	proc  3 (LookupThread:1) promotion_atomicity.pml:390 (state 122)	[ins = I_OK]
+ 36:	proc  3 (LookupThread:1) promotion_atomicity.pml:394 (state 126)	[((ins==I_OK))]
+ 37:	proc  3 (LookupThread:1) promotion_atomicity.pml:424 (state 207)	[((!(alloc_failed)&&(ins==I_OK)))]
+ 38:	proc  2 (SsdEvictor:1) promotion_atomicity.pml:152 (state 16)	[(mt_allocated[k])]
+spin: promotion_atomicity.pml:155, Error: assertion violated
+spin: text of failed assertion: assert((in_flight[k]==0))
+ 38:	proc  2 (SsdEvictor:1) promotion_atomicity.pml:155 (state 17)	[assert((in_flight[k]==0))]
+ 38:	proc  2 (SsdEvictor:1) promotion_atomicity.pml:156 (state 18)	[mt_allocated[k] = 0]
+ 38:	proc  2 (SsdEvictor:1) promotion_atomicity.pml:157 (state 19)	[mt_pool_used = (mt_pool_used-1)]
+ 38:	proc  2 (SsdEvictor:1) promotion_atomicity.pml:158 (state 20)	[slot_owner[k] = 0]
+ 38:	proc  2 (SsdEvictor:1) promotion_atomicity.pml:159 (state 21)	[inserts_in_gen[k] = 0]
+spin: trail ends after 38 steps
+#processes: 6
+		dm_state[0] = DM_BLOCK_DEVICE
+		dm_state[1] = DM_BLOCK_DEVICE
+		dm_read_ref[0] = 0
+		dm_read_ref[1] = 0
+		dm_write_ref[0] = 0
+		dm_write_ref[1] = 0
+		mt_allocated[0] = 0
+		mt_allocated[1] = 0
+		mt_pool_used = 0
+		slot_owner[0] = 0
+		slot_owner[1] = 0
+		inserts_in_gen[0] = 0
+		inserts_in_gen[1] = 0
+		promotion_success[0] = 0
+		promotion_success[1] = 0
+		in_flight[0] = 1
+		in_flight[1] = 0
+		threads_done = 0
+		shutdown = 0
+ 38:	proc  5 (LookupThread:1) promotion_atomicity.pml:319 (state 17)
+ 38:	proc  4 (LookupThread:1) promotion_atomicity.pml:319 (state 17)
+ 38:	proc  3 (LookupThread:1) promotion_atomicity.pml:426 (state 210)
+ 38:	proc  2 (SsdEvictor:1) promotion_atomicity.pml:276 (state 35)
+ 38:	proc  1 (Evictor:1) promotion_atomicity.pml:220 (state 54)
+ 38:	proc  0 (:init::1) promotion_atomicity.pml:580 (state 30)
+6 processes created

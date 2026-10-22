@@ -1,0 +1,1 @@
+2026-10-21 19:52 UTC | J26 | DONE | remove() leaks the SSD extent of a MemoryTier entry with a finished write-through (LookupResult::MemoryTier hides ssd_offset; P1/P4 fail), plus stale-offset double release (P2) and NotExist-arm pin theft (P5); P3 holds; control model with offset-at-dm.remove + guarded release passes all; mutant fails as required; liveness clean.

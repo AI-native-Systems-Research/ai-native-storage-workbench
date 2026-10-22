@@ -1,0 +1,846 @@
+  1:	proc  0 (:init::1) write_before_evict.pml:474 (state 17)	[k = 0]
+  1:	proc  0 (:init::1) write_before_evict.pml:490 (state 15)	[.(goto)]
+  1:	proc  0 (:init::1) write_before_evict.pml:476 (state 14)	[DO]
+  1:	proc  0 (:init::1) write_before_evict.pml:478 (state 3)	[dm_loc[k] = DM_NONE]
+		dm_loc[0] = DM_NONE
+		dm_loc[1] = 0
+		dm_loc[2] = 0
+  1:	proc  0 (:init::1) write_before_evict.pml:479 (state 4)	[dm_ptr[k] = 0]
+		dm_loc[0] = DM_NONE
+		dm_loc[1] = 0
+		dm_loc[2] = 0
+  1:	proc  0 (:init::1) write_before_evict.pml:480 (state 5)	[dm_ssd[k] = 0]
+		dm_loc[0] = DM_NONE
+		dm_loc[1] = 0
+		dm_loc[2] = 0
+  1:	proc  0 (:init::1) write_before_evict.pml:481 (state 6)	[dm_rref[k] = 0]
+		dm_loc[0] = DM_NONE
+		dm_loc[1] = 0
+		dm_loc[2] = 0
+  1:	proc  0 (:init::1) write_before_evict.pml:482 (state 7)	[dm_wref[k] = 0]
+		dm_loc[0] = DM_NONE
+		dm_loc[1] = 0
+		dm_loc[2] = 0
+  1:	proc  0 (:init::1) write_before_evict.pml:483 (state 8)	[mt_slot[k] = 0]
+		dm_loc[0] = DM_NONE
+		dm_loc[1] = 0
+		dm_loc[2] = 0
+  1:	proc  0 (:init::1) write_before_evict.pml:484 (state 9)	[key_gen[k] = 0]
+		dm_loc[0] = DM_NONE
+		dm_loc[1] = 0
+		dm_loc[2] = 0
+  1:	proc  0 (:init::1) write_before_evict.pml:485 (state 10)	[filling[k] = 0]
+		dm_loc[0] = DM_NONE
+		dm_loc[1] = 0
+		dm_loc[2] = 0
+  1:	proc  0 (:init::1) write_before_evict.pml:486 (state 11)	[k = (k+1)]
+		dm_loc[0] = DM_NONE
+		dm_loc[1] = 0
+		dm_loc[2] = 0
+  1:	proc  0 (:init::1) write_before_evict.pml:490 (state 15)	[.(goto)]
+		dm_loc[0] = DM_NONE
+		dm_loc[1] = 0
+		dm_loc[2] = 0
+  1:	proc  0 (:init::1) write_before_evict.pml:476 (state 14)	[DO]
+		dm_loc[0] = DM_NONE
+		dm_loc[1] = 0
+		dm_loc[2] = 0
+  1:	proc  0 (:init::1) write_before_evict.pml:478 (state 3)	[dm_loc[k] = DM_NONE]
+		dm_loc[0] = DM_NONE
+		dm_loc[1] = DM_NONE
+		dm_loc[2] = 0
+  1:	proc  0 (:init::1) write_before_evict.pml:479 (state 4)	[dm_ptr[k] = 0]
+		dm_loc[0] = DM_NONE
+		dm_loc[1] = DM_NONE
+		dm_loc[2] = 0
+  1:	proc  0 (:init::1) write_before_evict.pml:480 (state 5)	[dm_ssd[k] = 0]
+		dm_loc[0] = DM_NONE
+		dm_loc[1] = DM_NONE
+		dm_loc[2] = 0
+  1:	proc  0 (:init::1) write_before_evict.pml:481 (state 6)	[dm_rref[k] = 0]
+		dm_loc[0] = DM_NONE
+		dm_loc[1] = DM_NONE
+		dm_loc[2] = 0
+  1:	proc  0 (:init::1) write_before_evict.pml:482 (state 7)	[dm_wref[k] = 0]
+		dm_loc[0] = DM_NONE
+		dm_loc[1] = DM_NONE
+		dm_loc[2] = 0
+  1:	proc  0 (:init::1) write_before_evict.pml:483 (state 8)	[mt_slot[k] = 0]
+		dm_loc[0] = DM_NONE
+		dm_loc[1] = DM_NONE
+		dm_loc[2] = 0
+  1:	proc  0 (:init::1) write_before_evict.pml:484 (state 9)	[key_gen[k] = 0]
+		dm_loc[0] = DM_NONE
+		dm_loc[1] = DM_NONE
+		dm_loc[2] = 0
+  1:	proc  0 (:init::1) write_before_evict.pml:485 (state 10)	[filling[k] = 0]
+		dm_loc[0] = DM_NONE
+		dm_loc[1] = DM_NONE
+		dm_loc[2] = 0
+  1:	proc  0 (:init::1) write_before_evict.pml:486 (state 11)	[k = (k+1)]
+		dm_loc[0] = DM_NONE
+		dm_loc[1] = DM_NONE
+		dm_loc[2] = 0
+  1:	proc  0 (:init::1) write_before_evict.pml:490 (state 15)	[.(goto)]
+		dm_loc[0] = DM_NONE
+		dm_loc[1] = DM_NONE
+		dm_loc[2] = 0
+  1:	proc  0 (:init::1) write_before_evict.pml:476 (state 14)	[DO]
+		dm_loc[0] = DM_NONE
+		dm_loc[1] = DM_NONE
+		dm_loc[2] = 0
+  1:	proc  0 (:init::1) write_before_evict.pml:478 (state 3)	[dm_loc[k] = DM_NONE]
+		dm_loc[0] = DM_NONE
+		dm_loc[1] = DM_NONE
+		dm_loc[2] = DM_NONE
+  1:	proc  0 (:init::1) write_before_evict.pml:479 (state 4)	[dm_ptr[k] = 0]
+		dm_loc[0] = DM_NONE
+		dm_loc[1] = DM_NONE
+		dm_loc[2] = DM_NONE
+  1:	proc  0 (:init::1) write_before_evict.pml:480 (state 5)	[dm_ssd[k] = 0]
+		dm_loc[0] = DM_NONE
+		dm_loc[1] = DM_NONE
+		dm_loc[2] = DM_NONE
+  1:	proc  0 (:init::1) write_before_evict.pml:481 (state 6)	[dm_rref[k] = 0]
+		dm_loc[0] = DM_NONE
+		dm_loc[1] = DM_NONE
+		dm_loc[2] = DM_NONE
+  1:	proc  0 (:init::1) write_before_evict.pml:482 (state 7)	[dm_wref[k] = 0]
+		dm_loc[0] = DM_NONE
+		dm_loc[1] = DM_NONE
+		dm_loc[2] = DM_NONE
+  1:	proc  0 (:init::1) write_before_evict.pml:483 (state 8)	[mt_slot[k] = 0]
+		dm_loc[0] = DM_NONE
+		dm_loc[1] = DM_NONE
+		dm_loc[2] = DM_NONE
+  1:	proc  0 (:init::1) write_before_evict.pml:484 (state 9)	[key_gen[k] = 0]
+		dm_loc[0] = DM_NONE
+		dm_loc[1] = DM_NONE
+		dm_loc[2] = DM_NONE
+  1:	proc  0 (:init::1) write_before_evict.pml:485 (state 10)	[filling[k] = 0]
+		dm_loc[0] = DM_NONE
+		dm_loc[1] = DM_NONE
+		dm_loc[2] = DM_NONE
+  1:	proc  0 (:init::1) write_before_evict.pml:486 (state 11)	[k = (k+1)]
+		dm_loc[0] = DM_NONE
+		dm_loc[1] = DM_NONE
+		dm_loc[2] = DM_NONE
+  1:	proc  0 (:init::1) write_before_evict.pml:490 (state 15)	[.(goto)]
+		dm_loc[0] = DM_NONE
+		dm_loc[1] = DM_NONE
+		dm_loc[2] = DM_NONE
+  1:	proc  0 (:init::1) write_before_evict.pml:476 (state 14)	[DO]
+		dm_loc[0] = DM_NONE
+		dm_loc[1] = DM_NONE
+		dm_loc[2] = DM_NONE
+  1:	proc  0 (:init::1) write_before_evict.pml:488 (state 13)	[goto :b5]
+		dm_loc[0] = DM_NONE
+		dm_loc[1] = DM_NONE
+		dm_loc[2] = DM_NONE
+  1:	proc  0 (:init::1) write_before_evict.pml:476 (state 16)	[break]
+		dm_loc[0] = DM_NONE
+		dm_loc[1] = DM_NONE
+		dm_loc[2] = DM_NONE
+Starting BgWriter with pid 1
+  2:	proc  0 (:init::1) write_before_evict.pml:493 (state 18)	[(run BgWriter())]
+Starting SsdEvictor with pid 2
+  3:	proc  0 (:init::1) write_before_evict.pml:494 (state 19)	[(run SsdEvictor())]
+Starting Client with pid 3
+  4:	proc  0 (:init::1) write_before_evict.pml:495 (state 20)	[(run Client(0))]
+Starting Client with pid 4
+  5:	proc  0 (:init::1) write_before_evict.pml:496 (state 21)	[(run Client(1))]
+  6:	proc  4 (Client:1) write_before_evict.pml:209 (state 1)	[((i<2))]
+  6:	proc  4 (Client:1) write_before_evict.pml:212 (state 2)	[my_key = ( ((client_id==0)) -> (i) : ((2-(2*i))) )]
+  6:	proc  4 (Client:1) write_before_evict.pml:213 (state 3)	[i = (i+1)]
+  6:	proc  4 (Client:1) write_before_evict.pml:214 (state 4)	[ret = R_NONE]
+  6:	proc  4 (Client:1) write_before_evict.pml:215 (state 5)	[reserved = 0]
+  6:	proc  4 (Client:1) write_before_evict.pml:216 (state 6)	[attempts = 0]
+  6:	proc  4 (Client:1) write_before_evict.pml:217 (state 7)	[bp = 0]
+  7:	proc  4 (Client:1) write_before_evict.pml:221 (state 8)	[(((ret==R_NONE)&&!(reserved)))]
+  8:	proc  3 (Client:1) write_before_evict.pml:209 (state 1)	[((i<2))]
+  8:	proc  3 (Client:1) write_before_evict.pml:212 (state 2)	[my_key = ( ((client_id==0)) -> (i) : ((2-(2*i))) )]
+  8:	proc  3 (Client:1) write_before_evict.pml:213 (state 3)	[i = (i+1)]
+  8:	proc  3 (Client:1) write_before_evict.pml:214 (state 4)	[ret = R_NONE]
+  8:	proc  3 (Client:1) write_before_evict.pml:215 (state 5)	[reserved = 0]
+  8:	proc  3 (Client:1) write_before_evict.pml:216 (state 6)	[attempts = 0]
+  8:	proc  3 (Client:1) write_before_evict.pml:217 (state 7)	[bp = 0]
+  9:	proc  3 (Client:1) write_before_evict.pml:221 (state 8)	[(((ret==R_NONE)&&!(reserved)))]
+ 10:	proc  4 (Client:1) write_before_evict.pml:236 (state 73)	[else]
+ 11:	proc  4 (Client:1) write_before_evict.pml:244 (state 76)	[(((mt_slot[my_key]==0)&&(pool_used<2)))]
+ 11:	proc  4 (Client:1) write_before_evict.pml:245 (state 77)	[key_gen[my_key] = (key_gen[my_key]+1)]
+		key_gen[0] = 0
+		key_gen[1] = 0
+		key_gen[2] = 1
+ 11:	proc  4 (Client:1) write_before_evict.pml:246 (state 78)	[mt_slot[my_key] = key_gen[my_key]]
+		mt_slot[0] = 0
+		mt_slot[1] = 0
+		mt_slot[2] = 1
+		key_gen[0] = 0
+		key_gen[1] = 0
+		key_gen[2] = 1
+ 11:	proc  4 (Client:1) write_before_evict.pml:247 (state 79)	[my_gen = key_gen[my_key]]
+		mt_slot[0] = 0
+		mt_slot[1] = 0
+		mt_slot[2] = 1
+		key_gen[0] = 0
+		key_gen[1] = 0
+		key_gen[2] = 1
+ 11:	proc  4 (Client:1) write_before_evict.pml:248 (state 80)	[pool_used = (pool_used+1)]
+		mt_slot[0] = 0
+		mt_slot[1] = 0
+		mt_slot[2] = 1
+		key_gen[0] = 0
+		key_gen[1] = 0
+		key_gen[2] = 1
+		pool_used = 1
+ 11:	proc  4 (Client:1) write_before_evict.pml:249 (state 81)	[reserved = 1]
+		mt_slot[0] = 0
+		mt_slot[1] = 0
+		mt_slot[2] = 1
+		key_gen[0] = 0
+		key_gen[1] = 0
+		key_gen[2] = 1
+		pool_used = 1
+ 12:	proc  4 (Client:1) write_before_evict.pml:258 (state 89)	[else]
+ 13:	proc  4 (Client:1) write_before_evict.pml:258 (state 90)	[(1)]
+ 14:	proc  4 (Client:1) write_before_evict.pml:270 (state 101)	[else]
+ 15:	proc  4 (Client:1) write_before_evict.pml:270 (state 102)	[(1)]
+ 16:	proc  4 (Client:1) write_before_evict.pml:272 (state 105)	[else]
+ 17:	proc  4 (Client:1) write_before_evict.pml:276 (state 110)	[(reserved)]
+ 18:	proc  4 (Client:1) write_before_evict.pml:282 (state 113)	[else]
+ 19:	proc  4 (Client:1) write_before_evict.pml:284 (state 114)	[assert((mt_slot[my_key]==my_gen))]
+ 19:	proc  4 (Client:1) write_before_evict.pml:285 (state 115)	[filling[my_key] = mt_slot[my_key]]
+		filling[0] = 0
+		filling[1] = 0
+		filling[2] = 1
+ 20:	proc  4 (Client:1) write_before_evict.pml:289 (state 119)	[((ret==R_NONE))]
+ 21:	proc  4 (Client:1) write_before_evict.pml:293 (state 120)	[assert((mt_slot[my_key]==my_gen))]
+ 21:	proc  4 (Client:1) write_before_evict.pml:294 (state 121)	[filling[my_key] = 0]
+		filling[0] = 0
+		filling[1] = 0
+		filling[2] = 0
+ 22:	proc  4 (Client:1) write_before_evict.pml:299 (state 123)	[ptr = mt_slot[my_key]]
+ 23:	proc  4 (Client:1) write_before_evict.pml:302 (state 126)	[else]
+ 24:	proc  4 (Client:1) write_before_evict.pml:302 (state 127)	[filling[my_key] = ptr]
+		filling[0] = 0
+		filling[1] = 0
+		filling[2] = 1
+ 25:	proc  4 (Client:1) write_before_evict.pml:306 (state 131)	[((ret==R_NONE))]
+ 26:	proc  4 (Client:1) write_before_evict.pml:310 (state 132)	[filling[my_key] = 0]
+		filling[0] = 0
+		filling[1] = 0
+		filling[2] = 0
+ 27:	proc  4 (Client:1) write_before_evict.pml:314 (state 135)	[else]
+ 28:	proc  4 (Client:1) write_before_evict.pml:315 (state 136)	[dm_loc[my_key] = DM_MT]
+		dm_loc[0] = DM_NONE
+		dm_loc[1] = DM_NONE
+		dm_loc[2] = DM_MT
+ 28:	proc  4 (Client:1) write_before_evict.pml:316 (state 137)	[dm_ptr[my_key] = ptr]
+		dm_loc[0] = DM_NONE
+		dm_loc[1] = DM_NONE
+		dm_loc[2] = DM_MT
+		dm_ptr[0] = 0
+		dm_ptr[1] = 0
+		dm_ptr[2] = 1
+ 28:	proc  4 (Client:1) write_before_evict.pml:317 (state 138)	[dm_ssd[my_key] = 0]
+		dm_loc[0] = DM_NONE
+		dm_loc[1] = DM_NONE
+		dm_loc[2] = DM_MT
+		dm_ptr[0] = 0
+		dm_ptr[1] = 0
+		dm_ptr[2] = 1
+ 28:	proc  4 (Client:1) write_before_evict.pml:318 (state 139)	[dm_rref[my_key] = 0]
+		dm_loc[0] = DM_NONE
+		dm_loc[1] = DM_NONE
+		dm_loc[2] = DM_MT
+		dm_ptr[0] = 0
+		dm_ptr[1] = 0
+		dm_ptr[2] = 1
+ 28:	proc  4 (Client:1) write_before_evict.pml:319 (state 140)	[dm_wref[my_key] = 1]
+		dm_loc[0] = DM_NONE
+		dm_loc[1] = DM_NONE
+		dm_loc[2] = DM_MT
+		dm_ptr[0] = 0
+		dm_ptr[1] = 0
+		dm_ptr[2] = 1
+		dm_wref[0] = 0
+		dm_wref[1] = 0
+		dm_wref[2] = 1
+ 28:	proc  4 (Client:1) write_before_evict.pml:321 (state 141)	[assert((mt_slot[my_key]==dm_ptr[my_key]))]
+		dm_loc[0] = DM_NONE
+		dm_loc[1] = DM_NONE
+		dm_loc[2] = DM_MT
+		dm_ptr[0] = 0
+		dm_ptr[1] = 0
+		dm_ptr[2] = 1
+		dm_wref[0] = 0
+		dm_wref[1] = 0
+		dm_wref[2] = 1
+ 29:	proc  4 (Client:1) write_before_evict.pml:327 (state 157)	[else]
+ 30:	proc  4 (Client:1) write_before_evict.pml:333 (state 158)	[assert(((dm_loc[my_key]!=DM_NONE)&&dm_wref[my_key]))]
+ 30:	proc  4 (Client:1) write_before_evict.pml:334 (state 159)	[dm_wref[my_key] = 0]
+		dm_wref[0] = 0
+		dm_wref[1] = 0
+		dm_wref[2] = 0
+ 30:	proc  4 (Client:1) write_before_evict.pml:335 (state 160)	[dm_rref[my_key] = (dm_rref[my_key]+1)]
+		dm_rref[0] = 0
+		dm_rref[1] = 0
+		dm_rref[2] = 1
+		dm_wref[0] = 0
+		dm_wref[1] = 0
+		dm_wref[2] = 0
+ 31:	proc  4 (Client:1) write_before_evict.pml:338 (state 162)	[write_queue!my_key]
+		queue 1 (write_queue): [2]
+ 32:	proc  4 (Client:1) write_before_evict.pml:339 (state 163)	[ret = R_OK_CACHED]
+		queue 1 (write_queue): [2]
+ 32:	proc  4 (Client:1) write_before_evict.pml:349 (state 178)	[assert((((ret==R_OK_CACHED)||(ret==R_OK_DROPPED))||(ret==R_ALREADY_EXISTS)))]
+		queue 1 (write_queue): [2]
+ 33:	proc  4 (Client:1) write_before_evict.pml:209 (state 1)	[((i<2))]
+		queue 1 (write_queue): [2]
+ 33:	proc  4 (Client:1) write_before_evict.pml:212 (state 2)	[my_key = ( ((client_id==0)) -> (i) : ((2-(2*i))) )]
+		queue 1 (write_queue): [2]
+ 33:	proc  4 (Client:1) write_before_evict.pml:213 (state 3)	[i = (i+1)]
+		queue 1 (write_queue): [2]
+ 33:	proc  4 (Client:1) write_before_evict.pml:214 (state 4)	[ret = R_NONE]
+		queue 1 (write_queue): [2]
+ 33:	proc  4 (Client:1) write_before_evict.pml:215 (state 5)	[reserved = 0]
+		queue 1 (write_queue): [2]
+ 33:	proc  4 (Client:1) write_before_evict.pml:216 (state 6)	[attempts = 0]
+		queue 1 (write_queue): [2]
+ 33:	proc  4 (Client:1) write_before_evict.pml:217 (state 7)	[bp = 0]
+		queue 1 (write_queue): [2]
+ 34:	proc  4 (Client:1) write_before_evict.pml:221 (state 8)	[(((ret==R_NONE)&&!(reserved)))]
+		queue 1 (write_queue): [2]
+ 35:	proc  4 (Client:1) write_before_evict.pml:236 (state 73)	[else]
+		queue 1 (write_queue): [2]
+ 36:	proc  4 (Client:1) write_before_evict.pml:244 (state 76)	[(((mt_slot[my_key]==0)&&(pool_used<2)))]
+		queue 1 (write_queue): [2]
+ 36:	proc  4 (Client:1) write_before_evict.pml:245 (state 77)	[key_gen[my_key] = (key_gen[my_key]+1)]
+		key_gen[0] = 1
+		key_gen[1] = 0
+		key_gen[2] = 1
+		queue 1 (write_queue): [2]
+ 36:	proc  4 (Client:1) write_before_evict.pml:246 (state 78)	[mt_slot[my_key] = key_gen[my_key]]
+		mt_slot[0] = 1
+		mt_slot[1] = 0
+		mt_slot[2] = 1
+		key_gen[0] = 1
+		key_gen[1] = 0
+		key_gen[2] = 1
+		queue 1 (write_queue): [2]
+ 36:	proc  4 (Client:1) write_before_evict.pml:247 (state 79)	[my_gen = key_gen[my_key]]
+		mt_slot[0] = 1
+		mt_slot[1] = 0
+		mt_slot[2] = 1
+		key_gen[0] = 1
+		key_gen[1] = 0
+		key_gen[2] = 1
+		queue 1 (write_queue): [2]
+ 36:	proc  4 (Client:1) write_before_evict.pml:248 (state 80)	[pool_used = (pool_used+1)]
+		mt_slot[0] = 1
+		mt_slot[1] = 0
+		mt_slot[2] = 1
+		key_gen[0] = 1
+		key_gen[1] = 0
+		key_gen[2] = 1
+		pool_used = 2
+		queue 1 (write_queue): [2]
+ 36:	proc  4 (Client:1) write_before_evict.pml:249 (state 81)	[reserved = 1]
+		mt_slot[0] = 1
+		mt_slot[1] = 0
+		mt_slot[2] = 1
+		key_gen[0] = 1
+		key_gen[1] = 0
+		key_gen[2] = 1
+		pool_used = 2
+		queue 1 (write_queue): [2]
+ 37:	proc  4 (Client:1) write_before_evict.pml:258 (state 89)	[else]
+		queue 1 (write_queue): [2]
+ 38:	proc  4 (Client:1) write_before_evict.pml:258 (state 90)	[(1)]
+		queue 1 (write_queue): [2]
+ 39:	proc  4 (Client:1) write_before_evict.pml:270 (state 101)	[else]
+		queue 1 (write_queue): [2]
+ 40:	proc  4 (Client:1) write_before_evict.pml:270 (state 102)	[(1)]
+		queue 1 (write_queue): [2]
+ 41:	proc  4 (Client:1) write_before_evict.pml:272 (state 105)	[else]
+		queue 1 (write_queue): [2]
+ 42:	proc  4 (Client:1) write_before_evict.pml:276 (state 110)	[(reserved)]
+		queue 1 (write_queue): [2]
+ 43:	proc  4 (Client:1) write_before_evict.pml:282 (state 113)	[else]
+		queue 1 (write_queue): [2]
+ 44:	proc  4 (Client:1) write_before_evict.pml:284 (state 114)	[assert((mt_slot[my_key]==my_gen))]
+		queue 1 (write_queue): [2]
+ 44:	proc  4 (Client:1) write_before_evict.pml:285 (state 115)	[filling[my_key] = mt_slot[my_key]]
+		filling[0] = 1
+		filling[1] = 0
+		filling[2] = 0
+		queue 1 (write_queue): [2]
+ 45:	proc  4 (Client:1) write_before_evict.pml:289 (state 119)	[((ret==R_NONE))]
+		queue 1 (write_queue): [2]
+ 46:	proc  4 (Client:1) write_before_evict.pml:293 (state 120)	[assert((mt_slot[my_key]==my_gen))]
+		queue 1 (write_queue): [2]
+ 46:	proc  4 (Client:1) write_before_evict.pml:294 (state 121)	[filling[my_key] = 0]
+		filling[0] = 0
+		filling[1] = 0
+		filling[2] = 0
+		queue 1 (write_queue): [2]
+ 47:	proc  4 (Client:1) write_before_evict.pml:299 (state 123)	[ptr = mt_slot[my_key]]
+		queue 1 (write_queue): [2]
+ 48:	proc  4 (Client:1) write_before_evict.pml:302 (state 126)	[else]
+		queue 1 (write_queue): [2]
+ 49:	proc  4 (Client:1) write_before_evict.pml:302 (state 127)	[filling[my_key] = ptr]
+		filling[0] = 1
+		filling[1] = 0
+		filling[2] = 0
+		queue 1 (write_queue): [2]
+ 50:	proc  4 (Client:1) write_before_evict.pml:306 (state 131)	[((ret==R_NONE))]
+		queue 1 (write_queue): [2]
+ 51:	proc  4 (Client:1) write_before_evict.pml:310 (state 132)	[filling[my_key] = 0]
+		filling[0] = 0
+		filling[1] = 0
+		filling[2] = 0
+		queue 1 (write_queue): [2]
+ 52:	proc  4 (Client:1) write_before_evict.pml:314 (state 135)	[else]
+		queue 1 (write_queue): [2]
+ 53:	proc  4 (Client:1) write_before_evict.pml:315 (state 136)	[dm_loc[my_key] = DM_MT]
+		dm_loc[0] = DM_MT
+		dm_loc[1] = DM_NONE
+		dm_loc[2] = DM_MT
+		queue 1 (write_queue): [2]
+ 53:	proc  4 (Client:1) write_before_evict.pml:316 (state 137)	[dm_ptr[my_key] = ptr]
+		dm_loc[0] = DM_MT
+		dm_loc[1] = DM_NONE
+		dm_loc[2] = DM_MT
+		dm_ptr[0] = 1
+		dm_ptr[1] = 0
+		dm_ptr[2] = 1
+		queue 1 (write_queue): [2]
+ 53:	proc  4 (Client:1) write_before_evict.pml:317 (state 138)	[dm_ssd[my_key] = 0]
+		dm_loc[0] = DM_MT
+		dm_loc[1] = DM_NONE
+		dm_loc[2] = DM_MT
+		dm_ptr[0] = 1
+		dm_ptr[1] = 0
+		dm_ptr[2] = 1
+		queue 1 (write_queue): [2]
+ 53:	proc  4 (Client:1) write_before_evict.pml:318 (state 139)	[dm_rref[my_key] = 0]
+		dm_loc[0] = DM_MT
+		dm_loc[1] = DM_NONE
+		dm_loc[2] = DM_MT
+		dm_ptr[0] = 1
+		dm_ptr[1] = 0
+		dm_ptr[2] = 1
+		queue 1 (write_queue): [2]
+ 53:	proc  4 (Client:1) write_before_evict.pml:319 (state 140)	[dm_wref[my_key] = 1]
+		dm_loc[0] = DM_MT
+		dm_loc[1] = DM_NONE
+		dm_loc[2] = DM_MT
+		dm_ptr[0] = 1
+		dm_ptr[1] = 0
+		dm_ptr[2] = 1
+		dm_wref[0] = 1
+		dm_wref[1] = 0
+		dm_wref[2] = 0
+		queue 1 (write_queue): [2]
+ 53:	proc  4 (Client:1) write_before_evict.pml:321 (state 141)	[assert((mt_slot[my_key]==dm_ptr[my_key]))]
+		dm_loc[0] = DM_MT
+		dm_loc[1] = DM_NONE
+		dm_loc[2] = DM_MT
+		dm_ptr[0] = 1
+		dm_ptr[1] = 0
+		dm_ptr[2] = 1
+		dm_wref[0] = 1
+		dm_wref[1] = 0
+		dm_wref[2] = 0
+		queue 1 (write_queue): [2]
+ 54:	proc  4 (Client:1) write_before_evict.pml:327 (state 157)	[else]
+		queue 1 (write_queue): [2]
+ 55:	proc  4 (Client:1) write_before_evict.pml:333 (state 158)	[assert(((dm_loc[my_key]!=DM_NONE)&&dm_wref[my_key]))]
+		queue 1 (write_queue): [2]
+ 55:	proc  4 (Client:1) write_before_evict.pml:334 (state 159)	[dm_wref[my_key] = 0]
+		dm_wref[0] = 0
+		dm_wref[1] = 0
+		dm_wref[2] = 0
+		queue 1 (write_queue): [2]
+ 55:	proc  4 (Client:1) write_before_evict.pml:335 (state 160)	[dm_rref[my_key] = (dm_rref[my_key]+1)]
+		dm_rref[0] = 1
+		dm_rref[1] = 0
+		dm_rref[2] = 1
+		dm_wref[0] = 0
+		dm_wref[1] = 0
+		dm_wref[2] = 0
+		queue 1 (write_queue): [2]
+ 56:	proc  4 (Client:1) write_before_evict.pml:338 (state 162)	[write_queue!my_key]
+		queue 1 (write_queue): [2][0]
+ 57:	proc  4 (Client:1) write_before_evict.pml:339 (state 163)	[ret = R_OK_CACHED]
+		queue 1 (write_queue): [2][0]
+ 57:	proc  4 (Client:1) write_before_evict.pml:349 (state 178)	[assert((((ret==R_OK_CACHED)||(ret==R_OK_DROPPED))||(ret==R_ALREADY_EXISTS)))]
+		queue 1 (write_queue): [2][0]
+ 58:	proc  4 (Client:1) write_before_evict.pml:351 (state 179)	[((i>=2))]
+		queue 1 (write_queue): [2][0]
+ 59:	proc  4 (Client:1) write_before_evict.pml:355 (state 184)	[clients_done = (clients_done+1)]
+		queue 1 (write_queue): [2][0]
+		clients_done = 1
+ 60: proc 4 terminates
+ 61:	proc  3 (Client:1) write_before_evict.pml:223 (state 9)	[((pool_used>=2))]
+		queue 1 (write_queue): [2][0]
+ 62:	proc  3 (Client:1) write_before_evict.pml:228 (state 12)	[else]
+		queue 1 (write_queue): [2][0]
+ 63:	proc  3 (Client:1) write_before_evict.pml:229 (state 13)	[attempts = (attempts+1)]
+		queue 1 (write_queue): [2][0]
+ 64:	proc  3 (Client:1) write_before_evict.pml:136 (state 14)	[freed = 0]
+		queue 1 (write_queue): [2][0]
+ 64:	proc  3 (Client:1) write_before_evict.pml:137 (state 15)	[c = 0]
+		queue 1 (write_queue): [2][0]
+ 65:	proc  3 (Client:1) write_before_evict.pml:139 (state 16)	[(((c<3)&&!(freed)))]
+		queue 1 (write_queue): [2][0]
+ 66:	proc  3 (Client:1) write_before_evict.pml:141 (state 17)	[((mt_slot[c]!=0))]
+		queue 1 (write_queue): [2][0]
+ 67:	proc  3 (Client:1) write_before_evict.pml:147 (state 20)	[(((dm_loc[c]!=DM_NONE)&&((dm_rref[c]>0)||dm_wref[c])))]
+		queue 1 (write_queue): [2][0]
+ 67:	proc  3 (Client:1) write_before_evict.pml:148 (state 21)	[tev = TEV_ACTIVE_REFS]
+		queue 1 (write_queue): [2][0]
+ 68:	proc  3 (Client:1) write_before_evict.pml:169 (state 47)	[((tev==TEV_ACTIVE_REFS))]
+		queue 1 (write_queue): [2][0]
+ 69:	proc  3 (Client:1) write_before_evict.pml:171 (state 48)	[(1)]
+		queue 1 (write_queue): [2][0]
+ 69:	proc  3 (Client:1) write_before_evict.pml:186 (state 58)	[c = (c+1)]
+		queue 1 (write_queue): [2][0]
+ 70:	proc  3 (Client:1) write_before_evict.pml:139 (state 16)	[(((c<3)&&!(freed)))]
+		queue 1 (write_queue): [2][0]
+ 71:	proc  3 (Client:1) write_before_evict.pml:184 (state 54)	[else]
+		queue 1 (write_queue): [2][0]
+ 72:	proc  3 (Client:1) write_before_evict.pml:184 (state 55)	[(1)]
+		queue 1 (write_queue): [2][0]
+ 72:	proc  3 (Client:1) write_before_evict.pml:186 (state 58)	[c = (c+1)]
+		queue 1 (write_queue): [2][0]
+ 73:	proc  3 (Client:1) write_before_evict.pml:139 (state 16)	[(((c<3)&&!(freed)))]
+		queue 1 (write_queue): [2][0]
+ 74:	proc  3 (Client:1) write_before_evict.pml:141 (state 17)	[((mt_slot[c]!=0))]
+		queue 1 (write_queue): [2][0]
+ 75:	proc  3 (Client:1) write_before_evict.pml:147 (state 20)	[(((dm_loc[c]!=DM_NONE)&&((dm_rref[c]>0)||dm_wref[c])))]
+		queue 1 (write_queue): [2][0]
+ 75:	proc  3 (Client:1) write_before_evict.pml:148 (state 21)	[tev = TEV_ACTIVE_REFS]
+		queue 1 (write_queue): [2][0]
+ 76:	proc  3 (Client:1) write_before_evict.pml:169 (state 47)	[((tev==TEV_ACTIVE_REFS))]
+		queue 1 (write_queue): [2][0]
+ 77:	proc  3 (Client:1) write_before_evict.pml:171 (state 48)	[(1)]
+		queue 1 (write_queue): [2][0]
+ 77:	proc  3 (Client:1) write_before_evict.pml:186 (state 58)	[c = (c+1)]
+		queue 1 (write_queue): [2][0]
+ 78:	proc  3 (Client:1) write_before_evict.pml:187 (state 59)	[else]
+		queue 1 (write_queue): [2][0]
+ 79:	proc  3 (Client:1) write_before_evict.pml:232 (state 65)	[(!(freed))]
+		queue 1 (write_queue): [2][0]
+ 79:	proc  3 (Client:1) write_before_evict.pml:232 (state 66)	[ret = R_ALLOC_FAILED]
+		queue 1 (write_queue): [2][0]
+ 80:	proc  3 (Client:1) write_before_evict.pml:264 (state 95)	[(((ret==R_ALLOC_FAILED)&&(bp<1)))]
+		queue 1 (write_queue): [2][0]
+ 80:	proc  3 (Client:1) write_before_evict.pml:265 (state 96)	[bp = (bp+1)]
+		queue 1 (write_queue): [2][0]
+ 80:	proc  3 (Client:1) write_before_evict.pml:266 (state 97)	[attempts = 0]
+		queue 1 (write_queue): [2][0]
+ 80:	proc  3 (Client:1) write_before_evict.pml:267 (state 98)	[ret = R_NONE]
+		queue 1 (write_queue): [2][0]
+ 81:	proc  3 (Client:1) write_before_evict.pml:221 (state 8)	[(((ret==R_NONE)&&!(reserved)))]
+		queue 1 (write_queue): [2][0]
+ 82:	proc  3 (Client:1) write_before_evict.pml:223 (state 9)	[((pool_used>=2))]
+		queue 1 (write_queue): [2][0]
+ 83:	proc  3 (Client:1) write_before_evict.pml:228 (state 12)	[else]
+		queue 1 (write_queue): [2][0]
+ 84:	proc  3 (Client:1) write_before_evict.pml:229 (state 13)	[attempts = (attempts+1)]
+		queue 1 (write_queue): [2][0]
+ 85:	proc  3 (Client:1) write_before_evict.pml:136 (state 14)	[freed = 0]
+		queue 1 (write_queue): [2][0]
+ 85:	proc  3 (Client:1) write_before_evict.pml:137 (state 15)	[c = 0]
+		queue 1 (write_queue): [2][0]
+ 86:	proc  3 (Client:1) write_before_evict.pml:139 (state 16)	[(((c<3)&&!(freed)))]
+		queue 1 (write_queue): [2][0]
+ 87:	proc  3 (Client:1) write_before_evict.pml:141 (state 17)	[((mt_slot[c]!=0))]
+		queue 1 (write_queue): [2][0]
+ 88:	proc  2 (SsdEvictor:1) write_before_evict.pml:427 (state 1)	[(!(shutdown))]
+		queue 1 (write_queue): [2][0]
+ 89:	proc  2 (SsdEvictor:1) write_before_evict.pml:431 (state 2)	[victim = 0]
+		queue 1 (write_queue): [2][0]
+ 89:	proc  2 (SsdEvictor:1) write_before_evict.pml:438 (state 7)	[is_bd = ((dm_loc[victim]==DM_BD)&&!(dm_wref[victim]))]
+		queue 1 (write_queue): [2][0]
+ 90:	proc  2 (SsdEvictor:1) write_before_evict.pml:461 (state 32)	[else]
+		queue 1 (write_queue): [2][0]
+ 91:	proc  1 (BgWriter:1) write_before_evict.pml:365 (state 1)	[write_queue?job_key]
+		queue 1 (write_queue): [0]
+ 91:	proc  1 (BgWriter:1) write_before_evict.pml:369 (state 2)	[wslot = mt_slot[job_key]]
+		queue 1 (write_queue): [0]
+ 92:	proc  2 (SsdEvictor:1) write_before_evict.pml:461 (state 33)	[(1)]
+		queue 1 (write_queue): [0]
+ 93:	proc  1 (BgWriter:1) write_before_evict.pml:380 (state 9)	[else]
+		queue 1 (write_queue): [0]
+ 94:	proc  1 (BgWriter:1) write_before_evict.pml:385 (state 10)	[(1)]
+		queue 1 (write_queue): [0]
+ 95:	proc  2 (SsdEvictor:1) write_before_evict.pml:427 (state 1)	[(!(shutdown))]
+		queue 1 (write_queue): [0]
+ 96:	proc  2 (SsdEvictor:1) write_before_evict.pml:431 (state 2)	[victim = 0]
+		queue 1 (write_queue): [0]
+ 96:	proc  2 (SsdEvictor:1) write_before_evict.pml:438 (state 7)	[is_bd = ((dm_loc[victim]==DM_BD)&&!(dm_wref[victim]))]
+		queue 1 (write_queue): [0]
+ 97:	proc  2 (SsdEvictor:1) write_before_evict.pml:461 (state 32)	[else]
+		queue 1 (write_queue): [0]
+ 98:	proc  1 (BgWriter:1) write_before_evict.pml:391 (state 11)	[assert(((dm_loc[job_key]!=DM_NONE)&&(dm_rref[job_key]>0)))]
+		queue 1 (write_queue): [0]
+ 98:	proc  1 (BgWriter:1) write_before_evict.pml:392 (state 12)	[dm_rref[job_key] = (dm_rref[job_key]-1)]
+		dm_rref[0] = 1
+		dm_rref[1] = 0
+		dm_rref[2] = 0
+		queue 1 (write_queue): [0]
+ 99:	proc  2 (SsdEvictor:1) write_before_evict.pml:461 (state 33)	[(1)]
+		queue 1 (write_queue): [0]
+100:	proc  2 (SsdEvictor:1) write_before_evict.pml:427 (state 1)	[(!(shutdown))]
+		queue 1 (write_queue): [0]
+101:	proc  2 (SsdEvictor:1) write_before_evict.pml:431 (state 2)	[victim = 0]
+		queue 1 (write_queue): [0]
+101:	proc  2 (SsdEvictor:1) write_before_evict.pml:438 (state 7)	[is_bd = ((dm_loc[victim]==DM_BD)&&!(dm_wref[victim]))]
+		queue 1 (write_queue): [0]
+102:	proc  1 (BgWriter:1) write_before_evict.pml:365 (state 1)	[write_queue?job_key]
+		queue 1 (write_queue): 
+102:	proc  1 (BgWriter:1) write_before_evict.pml:369 (state 2)	[wslot = mt_slot[job_key]]
+		queue 1 (write_queue): 
+103:	proc  2 (SsdEvictor:1) write_before_evict.pml:461 (state 32)	[else]
+		queue 1 (write_queue): 
+104:	proc  2 (SsdEvictor:1) write_before_evict.pml:461 (state 33)	[(1)]
+		queue 1 (write_queue): 
+105:	proc  1 (BgWriter:1) write_before_evict.pml:380 (state 9)	[else]
+		queue 1 (write_queue): 
+106:	proc  1 (BgWriter:1) write_before_evict.pml:394 (state 14)	[(1)]
+		queue 1 (write_queue): 
+107:	proc  2 (SsdEvictor:1) write_before_evict.pml:427 (state 1)	[(!(shutdown))]
+		queue 1 (write_queue): 
+108:	proc  2 (SsdEvictor:1) write_before_evict.pml:431 (state 2)	[victim = 0]
+		queue 1 (write_queue): 
+108:	proc  2 (SsdEvictor:1) write_before_evict.pml:438 (state 7)	[is_bd = ((dm_loc[victim]==DM_BD)&&!(dm_wref[victim]))]
+		queue 1 (write_queue): 
+109:	proc  2 (SsdEvictor:1) write_before_evict.pml:461 (state 32)	[else]
+		queue 1 (write_queue): 
+110:	proc  1 (BgWriter:1) write_before_evict.pml:400 (state 15)	[assert((dm_loc[job_key]==DM_MT))]
+		queue 1 (write_queue): 
+110:	proc  1 (BgWriter:1) write_before_evict.pml:402 (state 16)	[assert((wslot==dm_ptr[job_key]))]
+		queue 1 (write_queue): 
+110:	proc  1 (BgWriter:1) write_before_evict.pml:404 (state 17)	[assert((mt_slot[job_key]==wslot))]
+		queue 1 (write_queue): 
+110:	proc  1 (BgWriter:1) write_before_evict.pml:405 (state 18)	[dm_ssd[job_key] = 1]
+		dm_ssd[0] = 1
+		dm_ssd[1] = 0
+		dm_ssd[2] = 0
+		queue 1 (write_queue): 
+111:	proc  1 (BgWriter:1) write_before_evict.pml:407 (state 19)	[((dm_rref[job_key]>0))]
+		queue 1 (write_queue): 
+111:	proc  1 (BgWriter:1) write_before_evict.pml:407 (state 20)	[dm_rref[job_key] = (dm_rref[job_key]-1)]
+		dm_rref[0] = 0
+		dm_rref[1] = 0
+		dm_rref[2] = 0
+		queue 1 (write_queue): 
+112:	proc  2 (SsdEvictor:1) write_before_evict.pml:461 (state 33)	[(1)]
+		queue 1 (write_queue): 
+113:	proc  3 (Client:1) write_before_evict.pml:150 (state 22)	[(((((dm_loc[c]==DM_MT)&&(dm_rref[c]==0))&&!(dm_wref[c]))&&dm_ssd[c]))]
+		queue 1 (write_queue): 
+113:	proc  3 (Client:1) write_before_evict.pml:152 (state 23)	[assert(dm_ssd[c])]
+		queue 1 (write_queue): 
+113:	proc  3 (Client:1) write_before_evict.pml:154 (state 24)	[assert(((dm_rref[c]==0)&&!(dm_wref[c])))]
+		queue 1 (write_queue): 
+113:	proc  3 (Client:1) write_before_evict.pml:155 (state 25)	[dm_loc[c] = DM_BD]
+		dm_loc[0] = DM_BD
+		dm_loc[1] = DM_NONE
+		dm_loc[2] = DM_MT
+		queue 1 (write_queue): 
+113:	proc  3 (Client:1) write_before_evict.pml:156 (state 26)	[tev = TEV_OK]
+		dm_loc[0] = DM_BD
+		dm_loc[1] = DM_NONE
+		dm_loc[2] = DM_MT
+		queue 1 (write_queue): 
+114:	proc  3 (Client:1) write_before_evict.pml:165 (state 34)	[((tev==TEV_OK))]
+		queue 1 (write_queue): 
+115:	proc  3 (Client:1) write_before_evict.pml:120 (state 35)	[((mt_slot[c]!=0))]
+		queue 1 (write_queue): 
+115:	proc  3 (Client:1) write_before_evict.pml:123 (state 36)	[assert(!(((dm_loc[c]==DM_MT)&&(dm_ptr[c]==mt_slot[c]))))]
+		queue 1 (write_queue): 
+115:	proc  3 (Client:1) write_before_evict.pml:124 (state 37)	[assert((filling[c]!=mt_slot[c]))]
+		queue 1 (write_queue): 
+115:	proc  3 (Client:1) write_before_evict.pml:125 (state 38)	[mt_slot[c] = 0]
+		mt_slot[0] = 0
+		mt_slot[1] = 0
+		mt_slot[2] = 1
+		queue 1 (write_queue): 
+115:	proc  3 (Client:1) write_before_evict.pml:126 (state 39)	[pool_used = (pool_used-1)]
+		mt_slot[0] = 0
+		mt_slot[1] = 0
+		mt_slot[2] = 1
+		pool_used = 1
+		queue 1 (write_queue): 
+115:	proc  3 (Client:1) write_before_evict.pml:168 (state 46)	[freed = 1]
+		mt_slot[0] = 0
+		mt_slot[1] = 0
+		mt_slot[2] = 1
+		pool_used = 1
+		queue 1 (write_queue): 
+115:	proc  3 (Client:1) write_before_evict.pml:186 (state 58)	[c = (c+1)]
+		mt_slot[0] = 0
+		mt_slot[1] = 0
+		mt_slot[2] = 1
+		pool_used = 1
+		queue 1 (write_queue): 
+116:	proc  3 (Client:1) write_before_evict.pml:187 (state 59)	[else]
+		queue 1 (write_queue): 
+117:	proc  3 (Client:1) write_before_evict.pml:233 (state 67)	[else]
+		queue 1 (write_queue): 
+118:	proc  3 (Client:1) write_before_evict.pml:233 (state 68)	[(1)]
+		queue 1 (write_queue): 
+119:	proc  3 (Client:1) write_before_evict.pml:270 (state 101)	[else]
+		queue 1 (write_queue): 
+120:	proc  3 (Client:1) write_before_evict.pml:270 (state 102)	[(1)]
+		queue 1 (write_queue): 
+121:	proc  3 (Client:1) write_before_evict.pml:221 (state 8)	[(((ret==R_NONE)&&!(reserved)))]
+		queue 1 (write_queue): 
+122:	proc  3 (Client:1) write_before_evict.pml:236 (state 73)	[else]
+		queue 1 (write_queue): 
+123:	proc  3 (Client:1) write_before_evict.pml:244 (state 76)	[(((mt_slot[my_key]==0)&&(pool_used<2)))]
+		queue 1 (write_queue): 
+123:	proc  3 (Client:1) write_before_evict.pml:245 (state 77)	[key_gen[my_key] = (key_gen[my_key]+1)]
+		key_gen[0] = 2
+		key_gen[1] = 0
+		key_gen[2] = 1
+		queue 1 (write_queue): 
+123:	proc  3 (Client:1) write_before_evict.pml:246 (state 78)	[mt_slot[my_key] = key_gen[my_key]]
+		mt_slot[0] = 2
+		mt_slot[1] = 0
+		mt_slot[2] = 1
+		key_gen[0] = 2
+		key_gen[1] = 0
+		key_gen[2] = 1
+		queue 1 (write_queue): 
+123:	proc  3 (Client:1) write_before_evict.pml:247 (state 79)	[my_gen = key_gen[my_key]]
+		mt_slot[0] = 2
+		mt_slot[1] = 0
+		mt_slot[2] = 1
+		key_gen[0] = 2
+		key_gen[1] = 0
+		key_gen[2] = 1
+		queue 1 (write_queue): 
+123:	proc  3 (Client:1) write_before_evict.pml:248 (state 80)	[pool_used = (pool_used+1)]
+		mt_slot[0] = 2
+		mt_slot[1] = 0
+		mt_slot[2] = 1
+		key_gen[0] = 2
+		key_gen[1] = 0
+		key_gen[2] = 1
+		pool_used = 2
+		queue 1 (write_queue): 
+123:	proc  3 (Client:1) write_before_evict.pml:249 (state 81)	[reserved = 1]
+		mt_slot[0] = 2
+		mt_slot[1] = 0
+		mt_slot[2] = 1
+		key_gen[0] = 2
+		key_gen[1] = 0
+		key_gen[2] = 1
+		pool_used = 2
+		queue 1 (write_queue): 
+124:	proc  3 (Client:1) write_before_evict.pml:258 (state 89)	[else]
+		queue 1 (write_queue): 
+125:	proc  3 (Client:1) write_before_evict.pml:258 (state 90)	[(1)]
+		queue 1 (write_queue): 
+126:	proc  3 (Client:1) write_before_evict.pml:270 (state 101)	[else]
+		queue 1 (write_queue): 
+127:	proc  3 (Client:1) write_before_evict.pml:270 (state 102)	[(1)]
+		queue 1 (write_queue): 
+128:	proc  3 (Client:1) write_before_evict.pml:272 (state 105)	[else]
+		queue 1 (write_queue): 
+129:	proc  3 (Client:1) write_before_evict.pml:276 (state 110)	[(reserved)]
+		queue 1 (write_queue): 
+130:	proc  3 (Client:1) write_before_evict.pml:282 (state 113)	[else]
+		queue 1 (write_queue): 
+131:	proc  3 (Client:1) write_before_evict.pml:284 (state 114)	[assert((mt_slot[my_key]==my_gen))]
+		queue 1 (write_queue): 
+131:	proc  3 (Client:1) write_before_evict.pml:285 (state 115)	[filling[my_key] = mt_slot[my_key]]
+		filling[0] = 2
+		filling[1] = 0
+		filling[2] = 0
+		queue 1 (write_queue): 
+132:	proc  3 (Client:1) write_before_evict.pml:289 (state 119)	[((ret==R_NONE))]
+		queue 1 (write_queue): 
+133:	proc  3 (Client:1) write_before_evict.pml:293 (state 120)	[assert((mt_slot[my_key]==my_gen))]
+		queue 1 (write_queue): 
+133:	proc  3 (Client:1) write_before_evict.pml:294 (state 121)	[filling[my_key] = 0]
+		filling[0] = 0
+		filling[1] = 0
+		filling[2] = 0
+		queue 1 (write_queue): 
+134:	proc  3 (Client:1) write_before_evict.pml:299 (state 123)	[ptr = mt_slot[my_key]]
+		queue 1 (write_queue): 
+135:	proc  3 (Client:1) write_before_evict.pml:302 (state 126)	[else]
+		queue 1 (write_queue): 
+136:	proc  3 (Client:1) write_before_evict.pml:302 (state 127)	[filling[my_key] = ptr]
+		filling[0] = 2
+		filling[1] = 0
+		filling[2] = 0
+		queue 1 (write_queue): 
+137:	proc  3 (Client:1) write_before_evict.pml:306 (state 131)	[((ret==R_NONE))]
+		queue 1 (write_queue): 
+138:	proc  2 (SsdEvictor:1) write_before_evict.pml:427 (state 1)	[(!(shutdown))]
+		queue 1 (write_queue): 
+139:	proc  2 (SsdEvictor:1) write_before_evict.pml:431 (state 2)	[victim = 0]
+		queue 1 (write_queue): 
+139:	proc  2 (SsdEvictor:1) write_before_evict.pml:438 (state 7)	[is_bd = ((dm_loc[victim]==DM_BD)&&!(dm_wref[victim]))]
+		queue 1 (write_queue): 
+140:	proc  2 (SsdEvictor:1) write_before_evict.pml:441 (state 9)	[(is_bd)]
+		queue 1 (write_queue): 
+141:	proc  2 (SsdEvictor:1) write_before_evict.pml:120 (state 10)	[((mt_slot[victim]!=0))]
+		queue 1 (write_queue): 
+141:	proc  2 (SsdEvictor:1) write_before_evict.pml:123 (state 11)	[assert(!(((dm_loc[victim]==DM_MT)&&(dm_ptr[victim]==mt_slot[victim]))))]
+		queue 1 (write_queue): 
+spin: write_before_evict.pml:124, Error: assertion violated
+spin: text of failed assertion: assert((filling[victim]!=mt_slot[victim]))
+141:	proc  2 (SsdEvictor:1) write_before_evict.pml:124 (state 12)	[assert((filling[victim]!=mt_slot[victim]))]
+		queue 1 (write_queue): 
+141:	proc  2 (SsdEvictor:1) write_before_evict.pml:125 (state 13)	[mt_slot[victim] = 0]
+		mt_slot[0] = 0
+		mt_slot[1] = 0
+		mt_slot[2] = 1
+		queue 1 (write_queue): 
+141:	proc  2 (SsdEvictor:1) write_before_evict.pml:126 (state 14)	[pool_used = (pool_used-1)]
+		mt_slot[0] = 0
+		mt_slot[1] = 0
+		mt_slot[2] = 1
+		pool_used = 1
+		queue 1 (write_queue): 
+spin: trail ends after 141 steps
+#processes: 4
+		dm_loc[0] = DM_BD
+		dm_loc[1] = DM_NONE
+		dm_loc[2] = DM_MT
+		dm_ptr[0] = 1
+		dm_ptr[1] = 0
+		dm_ptr[2] = 1
+		dm_ssd[0] = 1
+		dm_ssd[1] = 0
+		dm_ssd[2] = 0
+		dm_rref[0] = 0
+		dm_rref[1] = 0
+		dm_rref[2] = 0
+		dm_wref[0] = 0
+		dm_wref[1] = 0
+		dm_wref[2] = 0
+		mt_slot[0] = 0
+		mt_slot[1] = 0
+		mt_slot[2] = 1
+		key_gen[0] = 2
+		key_gen[1] = 0
+		key_gen[2] = 1
+		pool_used = 1
+		filling[0] = 2
+		filling[1] = 0
+		filling[2] = 0
+		queue 1 (write_queue): 
+		clients_done = 1
+		shutdown = 0
+141:	proc  3 (Client:1) write_before_evict.pml:309 (state 144)
+141:	proc  2 (SsdEvictor:1) write_before_evict.pml:447 (state 31)
+141:	proc  1 (BgWriter:1) write_before_evict.pml:364 (state 32)
+141:	proc  0 (:init::1) write_before_evict.pml:500 (state 23)
+5 processes created

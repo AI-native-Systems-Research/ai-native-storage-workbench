@@ -1,0 +1,57 @@
+--- ../modelling/spin/promotion-lookup-race/promotion_lookup_race.pml	2026-10-16 09:22:21.000000000 -0700
++++ promotion_lookup_race.pml	2026-10-16 23:01:28.782324039 -0700
+@@ -70,6 +70,8 @@
+ 
+ /* ---------- Dispatch-map location ---------- */
+ mtype = { BLOCK, MT };     /* every key always has an entry; never fully removed */
++/* J18: served-by label (lib.rs:2425/2435) vs where the data actually came from */
++mtype = { L_NONE, L_SSD, L_DRAM };
+ 
+ mtype dm_loc[N_KEYS];      /* BlockDevice or MemoryTier */
+ byte  read_refs[N_KEYS];   /* dispatch-map read pins */
+@@ -101,6 +103,8 @@
+     bool won;
+     bool already;
+     bool poolfull;
++    mtype label = L_NONE;   /* tier[i]: set once at classify (lib.rs:2425, 2435) */
++    bool recovering = false; /* in serve_concurrently_promoted: tier[i] not rewritten (lib.rs:2942-2944) */
+ 
+     do
+     :: (!finished && attempts < MAX_ATTEMPTS) ->
+@@ -125,6 +129,7 @@
+              * The read-pin (A3) keeps the evictor off the entry while we serve.
+              */
+             assert(dm_loc[k] == MT && mt_alloc[k] && resident[k]);
++            if :: !recovering -> label = L_DRAM :: else -> skip fi;   /* lib.rs:2425 */
+             /* serve_memory_tier_to_gpu (H2D) — a schedulable serve window */
+             skip;
+             assert(dm_loc[k] == MT && mt_alloc[k] && resident[k]);
+@@ -132,9 +137,11 @@
+                 assert(read_refs[k] > 0);
+                 read_refs[k]--            /* release_read */
+             };
++            assert(label == L_DRAM);   /* L1: served from DRAM => labelled Dram */
+             finished = true
+ 
+         :: (cls == BLOCK) ->
++            if :: !recovering -> label = L_SSD :: else -> skip fi;    /* lib.rs:2435 */
+             /* Cold classify: release_read before promoting (lib.rs:2205). */
+             atomic {
+                 assert(read_refs[k] > 0);
+@@ -189,6 +196,7 @@
+                 atomic {
+                     dm_loc[k] = MT
+                 };
++                assert(label == L_SSD);   /* L2: served by its own SSD read => labelled Ssd */
+                 finished = true
+ 
+             :: already ->
+@@ -197,7 +205,7 @@
+                  * Re-lookup on the next iteration; if the winner has flipped to
+                  * MemoryTier we serve warm, else we back off and retry.
+                  */
+-                skip
++                recovering = true
+ 
+             :: poolfull ->
+                 /* Back off; the evictor may free a slot before we retry. */

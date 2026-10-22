@@ -1,0 +1,896 @@
+  1:	proc  0 (:init::1) populate_lookup_linearizability.pml:551 (state 19)	[k = 0]
+  1:	proc  0 (:init::1) populate_lookup_linearizability.pml:562 (state 17)	[.(goto)]
+  1:	proc  0 (:init::1) populate_lookup_linearizability.pml:553 (state 16)	[DO]
+  1:	proc  0 (:init::1) populate_lookup_linearizability.pml:555 (state 3)	[committed[k] = 0]
+  1:	proc  0 (:init::1) populate_lookup_linearizability.pml:555 (state 4)	[location[k] = MT]
+		location[0] = MT
+		location[1] = 0
+  1:	proc  0 (:init::1) populate_lookup_linearizability.pml:555 (state 5)	[persisted[k] = 0]
+		location[0] = MT
+		location[1] = 0
+  1:	proc  0 (:init::1) populate_lookup_linearizability.pml:556 (state 6)	[read_refs[k] = 0]
+		location[0] = MT
+		location[1] = 0
+  1:	proc  0 (:init::1) populate_lookup_linearizability.pml:556 (state 7)	[write_ref[k] = 0]
+		location[0] = MT
+		location[1] = 0
+  1:	proc  0 (:init::1) populate_lookup_linearizability.pml:556 (state 8)	[in_pool[k] = 0]
+		location[0] = MT
+		location[1] = 0
+  1:	proc  0 (:init::1) populate_lookup_linearizability.pml:557 (state 9)	[slot_id[k] = 0]
+		location[0] = MT
+		location[1] = 0
+  1:	proc  0 (:init::1) populate_lookup_linearizability.pml:558 (state 10)	[gen[k] = 0]
+		location[0] = MT
+		location[1] = 0
+  1:	proc  0 (:init::1) populate_lookup_linearizability.pml:558 (state 11)	[pop_ret[k] = POP_NONE]
+		location[0] = MT
+		location[1] = 0
+		pop_ret[0] = POP_NONE
+		pop_ret[1] = 0
+  1:	proc  0 (:init::1) populate_lookup_linearizability.pml:558 (state 12)	[departed[k] = 0]
+		location[0] = MT
+		location[1] = 0
+		pop_ret[0] = POP_NONE
+		pop_ret[1] = 0
+  1:	proc  0 (:init::1) populate_lookup_linearizability.pml:559 (state 13)	[k = (k+1)]
+		location[0] = MT
+		location[1] = 0
+		pop_ret[0] = POP_NONE
+		pop_ret[1] = 0
+  1:	proc  0 (:init::1) populate_lookup_linearizability.pml:562 (state 17)	[.(goto)]
+		location[0] = MT
+		location[1] = 0
+		pop_ret[0] = POP_NONE
+		pop_ret[1] = 0
+  1:	proc  0 (:init::1) populate_lookup_linearizability.pml:553 (state 16)	[DO]
+		location[0] = MT
+		location[1] = 0
+		pop_ret[0] = POP_NONE
+		pop_ret[1] = 0
+  1:	proc  0 (:init::1) populate_lookup_linearizability.pml:555 (state 3)	[committed[k] = 0]
+		location[0] = MT
+		location[1] = 0
+		pop_ret[0] = POP_NONE
+		pop_ret[1] = 0
+  1:	proc  0 (:init::1) populate_lookup_linearizability.pml:555 (state 4)	[location[k] = MT]
+		location[0] = MT
+		location[1] = MT
+		pop_ret[0] = POP_NONE
+		pop_ret[1] = 0
+  1:	proc  0 (:init::1) populate_lookup_linearizability.pml:555 (state 5)	[persisted[k] = 0]
+		location[0] = MT
+		location[1] = MT
+		pop_ret[0] = POP_NONE
+		pop_ret[1] = 0
+  1:	proc  0 (:init::1) populate_lookup_linearizability.pml:556 (state 6)	[read_refs[k] = 0]
+		location[0] = MT
+		location[1] = MT
+		pop_ret[0] = POP_NONE
+		pop_ret[1] = 0
+  1:	proc  0 (:init::1) populate_lookup_linearizability.pml:556 (state 7)	[write_ref[k] = 0]
+		location[0] = MT
+		location[1] = MT
+		pop_ret[0] = POP_NONE
+		pop_ret[1] = 0
+  1:	proc  0 (:init::1) populate_lookup_linearizability.pml:556 (state 8)	[in_pool[k] = 0]
+		location[0] = MT
+		location[1] = MT
+		pop_ret[0] = POP_NONE
+		pop_ret[1] = 0
+  1:	proc  0 (:init::1) populate_lookup_linearizability.pml:557 (state 9)	[slot_id[k] = 0]
+		location[0] = MT
+		location[1] = MT
+		pop_ret[0] = POP_NONE
+		pop_ret[1] = 0
+  1:	proc  0 (:init::1) populate_lookup_linearizability.pml:558 (state 10)	[gen[k] = 0]
+		location[0] = MT
+		location[1] = MT
+		pop_ret[0] = POP_NONE
+		pop_ret[1] = 0
+  1:	proc  0 (:init::1) populate_lookup_linearizability.pml:558 (state 11)	[pop_ret[k] = POP_NONE]
+		location[0] = MT
+		location[1] = MT
+		pop_ret[0] = POP_NONE
+		pop_ret[1] = POP_NONE
+  1:	proc  0 (:init::1) populate_lookup_linearizability.pml:558 (state 12)	[departed[k] = 0]
+		location[0] = MT
+		location[1] = MT
+		pop_ret[0] = POP_NONE
+		pop_ret[1] = POP_NONE
+  1:	proc  0 (:init::1) populate_lookup_linearizability.pml:559 (state 13)	[k = (k+1)]
+		location[0] = MT
+		location[1] = MT
+		pop_ret[0] = POP_NONE
+		pop_ret[1] = POP_NONE
+  1:	proc  0 (:init::1) populate_lookup_linearizability.pml:562 (state 17)	[.(goto)]
+		location[0] = MT
+		location[1] = MT
+		pop_ret[0] = POP_NONE
+		pop_ret[1] = POP_NONE
+  1:	proc  0 (:init::1) populate_lookup_linearizability.pml:553 (state 16)	[DO]
+		location[0] = MT
+		location[1] = MT
+		pop_ret[0] = POP_NONE
+		pop_ret[1] = POP_NONE
+  1:	proc  0 (:init::1) populate_lookup_linearizability.pml:560 (state 15)	[goto :b10]
+		location[0] = MT
+		location[1] = MT
+		pop_ret[0] = POP_NONE
+		pop_ret[1] = POP_NONE
+  1:	proc  0 (:init::1) populate_lookup_linearizability.pml:553 (state 18)	[break]
+		location[0] = MT
+		location[1] = MT
+		pop_ret[0] = POP_NONE
+		pop_ret[1] = POP_NONE
+Starting BgWriter with pid 1
+  2:	proc  0 (:init::1) populate_lookup_linearizability.pml:564 (state 20)	[(run BgWriter())]
+Starting Evictor with pid 2
+  3:	proc  0 (:init::1) populate_lookup_linearizability.pml:565 (state 21)	[(run Evictor())]
+Starting Remover with pid 3
+  4:	proc  0 (:init::1) populate_lookup_linearizability.pml:566 (state 22)	[(run Remover())]
+  5:	proc  3 (Remover:1) populate_lookup_linearizability.pml:366 (state 1)	[k = 0]
+  6:	proc  3 (Remover:1) populate_lookup_linearizability.pml:366 (state 4)	[goto :b6]
+Starting SsdEvictor with pid 4
+  7:	proc  0 (:init::1) populate_lookup_linearizability.pml:568 (state 23)	[(run SsdEvictor())]
+  8:	proc  4 (SsdEvictor:1) populate_lookup_linearizability.pml:327 (state 1)	[k = 0]
+  9:	proc  4 (SsdEvictor:1) populate_lookup_linearizability.pml:327 (state 4)	[goto :b5]
+ 10:	proc  0 (:init::1) populate_lookup_linearizability.pml:571 (state 24)	[k = 0]
+ 11:	proc  0 (:init::1) populate_lookup_linearizability.pml:573 (state 25)	[((k<2))]
+Starting Populator with pid 5
+ 12:	proc  0 (:init::1) populate_lookup_linearizability.pml:573 (state 26)	[(run Populator(k))]
+ 13:	proc  5 (Populator:1) populate_lookup_linearizability.pml:199 (state 1)	[reserved = 0]
+ 13:	proc  5 (Populator:1) populate_lookup_linearizability.pml:200 (state 2)	[tries = 0]
+ 13:	proc  5 (Populator:1) populate_lookup_linearizability.pml:203 (state 3)	[freed = 0]
+ 14:	proc  5 (Populator:1) populate_lookup_linearizability.pml:204 (state 4)	[(!(reserved))]
+ 15:	proc  0 (:init::1) populate_lookup_linearizability.pml:573 (state 27)	[k = (k+1)]
+ 16:	proc  0 (:init::1) populate_lookup_linearizability.pml:573 (state 25)	[((k<2))]
+Starting Populator with pid 6
+ 17:	proc  0 (:init::1) populate_lookup_linearizability.pml:573 (state 26)	[(run Populator(k))]
+ 18:	proc  6 (Populator:1) populate_lookup_linearizability.pml:199 (state 1)	[reserved = 0]
+ 18:	proc  6 (Populator:1) populate_lookup_linearizability.pml:200 (state 2)	[tries = 0]
+ 18:	proc  6 (Populator:1) populate_lookup_linearizability.pml:203 (state 3)	[freed = 0]
+ 19:	proc  6 (Populator:1) populate_lookup_linearizability.pml:204 (state 4)	[(!(reserved))]
+ 20:	proc  0 (:init::1) populate_lookup_linearizability.pml:573 (state 27)	[k = (k+1)]
+ 21:	proc  0 (:init::1) populate_lookup_linearizability.pml:574 (state 28)	[((k>=2))]
+ 21:	proc  0 (:init::1) populate_lookup_linearizability.pml:576 (state 33)	[k = 0]
+ 22:	proc  0 (:init::1) populate_lookup_linearizability.pml:578 (state 34)	[((k<2))]
+Starting Looker with pid 7
+ 23:	proc  0 (:init::1) populate_lookup_linearizability.pml:578 (state 35)	[(run Looker())]
+ 24:	proc  7 (Looker:1) populate_lookup_linearizability.pml:421 (state 1)	[((n<1))]
+ 24:	proc  7 (Looker:1) populate_lookup_linearizability.pml:422 (state 2)	[n = (n+1)]
+ 24:	proc  7 (Looker:1) populate_lookup_linearizability.pml:423 (state 3)	[ret = L_NONE]
+ 24:	proc  7 (Looker:1) populate_lookup_linearizability.pml:424 (state 4)	[k = 0]
+ 25:	proc  7 (Looker:1) populate_lookup_linearizability.pml:424 (state 7)	[goto :b8]
+ 26:	proc  0 (:init::1) populate_lookup_linearizability.pml:578 (state 36)	[k = (k+1)]
+ 27:	proc  0 (:init::1) populate_lookup_linearizability.pml:578 (state 34)	[((k<2))]
+Starting Looker with pid 8
+ 28:	proc  0 (:init::1) populate_lookup_linearizability.pml:578 (state 35)	[(run Looker())]
+ 29:	proc  8 (Looker:1) populate_lookup_linearizability.pml:421 (state 1)	[((n<1))]
+ 29:	proc  8 (Looker:1) populate_lookup_linearizability.pml:422 (state 2)	[n = (n+1)]
+ 29:	proc  8 (Looker:1) populate_lookup_linearizability.pml:423 (state 3)	[ret = L_NONE]
+ 29:	proc  8 (Looker:1) populate_lookup_linearizability.pml:424 (state 4)	[k = 0]
+ 30:	proc  8 (Looker:1) populate_lookup_linearizability.pml:424 (state 7)	[goto :b8]
+ 31:	proc  0 (:init::1) populate_lookup_linearizability.pml:578 (state 36)	[k = (k+1)]
+ 32:	proc  0 (:init::1) populate_lookup_linearizability.pml:579 (state 37)	[((k>=2))]
+ 33:	proc  8 (Looker:1) populate_lookup_linearizability.pml:433 (state 11)	[((!(committed[k])||!(write_ref[k])))]
+ 33:	proc  8 (Looker:1) populate_lookup_linearizability.pml:437 (state 12)	[saw_pop_ok = (pop_ret[k]==POP_OK_CACHED)]
+ 33:	proc  8 (Looker:1) populate_lookup_linearizability.pml:439 (state 13)	[saw_departed = departed[k]]
+ 34:	proc  8 (Looker:1) populate_lookup_linearizability.pml:441 (state 14)	[(!(committed[k]))]
+ 34:	proc  8 (Looker:1) populate_lookup_linearizability.pml:442 (state 15)	[ret = L_KNF_NOTEXIST]
+ 35:	proc  8 (Looker:1) populate_lookup_linearizability.pml:460 (state 29)	[(((ret==L_KNF_NOTEXIST)||(ret==L_KNF_TIMEOUT)))]
+ 35:	proc  8 (Looker:1) populate_lookup_linearizability.pml:462 (state 30)	[assert((!(saw_pop_ok)||saw_departed))]
+ 36:	proc  8 (Looker:1) populate_lookup_linearizability.pml:541 (state 142)	[((n>=1))]
+ 37:	proc  8 (Looker:1) populate_lookup_linearizability.pml:543 (state 147)	[look_done = (look_done+1)]
+		look_done = 1
+ 38: proc 8 terminates
+ 39:	proc  6 (Populator:1) populate_lookup_linearizability.pml:210 (state 5)	[((!(in_pool[k])&&(pool_used<1)))]
+ 40:	proc  6 (Populator:1) populate_lookup_linearizability.pml:139 (state 6)	[in_pool[k] = 1]
+		in_pool[0] = 0
+		in_pool[1] = 1
+ 40:	proc  6 (Populator:1) populate_lookup_linearizability.pml:140 (state 7)	[pool_used = (pool_used+1)]
+		in_pool[0] = 0
+		in_pool[1] = 1
+		pool_used = 1
+ 40:	proc  6 (Populator:1) populate_lookup_linearizability.pml:141 (state 8)	[slot_id[k] = next_slot]
+		in_pool[0] = 0
+		in_pool[1] = 1
+		slot_id[0] = 0
+		slot_id[1] = 1
+		pool_used = 1
+ 40:	proc  6 (Populator:1) populate_lookup_linearizability.pml:142 (state 9)	[next_slot = ((next_slot%7)+1)]
+		in_pool[0] = 0
+		in_pool[1] = 1
+		slot_id[0] = 0
+		slot_id[1] = 1
+		next_slot = 2
+		pool_used = 1
+ 40:	proc  6 (Populator:1) populate_lookup_linearizability.pml:212 (state 11)	[reserved = 1]
+		in_pool[0] = 0
+		in_pool[1] = 1
+		slot_id[0] = 0
+		slot_id[1] = 1
+		next_slot = 2
+		pool_used = 1
+ 41:	proc  6 (Populator:1) populate_lookup_linearizability.pml:217 (state 17)	[(reserved)]
+ 42:	proc  6 (Populator:1) populate_lookup_linearizability.pml:217 (state 18)	[(1)]
+ 43:	proc  6 (Populator:1) populate_lookup_linearizability.pml:230 (state 74)	[(reserved)]
+ 44:	proc  6 (Populator:1) populate_lookup_linearizability.pml:238 (state 82)	[(reserved)]
+ 45:	proc  6 (Populator:1) populate_lookup_linearizability.pml:241 (state 83)	[(1)]
+ 46:	proc  6 (Populator:1) populate_lookup_linearizability.pml:242 (state 84)	[(1)]
+ 47:	proc  6 (Populator:1) populate_lookup_linearizability.pml:263 (state 115)	[assert(!(committed[k]))]
+ 47:	proc  6 (Populator:1) populate_lookup_linearizability.pml:264 (state 116)	[committed[k] = 1]
+		committed[0] = 0
+		committed[1] = 1
+ 47:	proc  6 (Populator:1) populate_lookup_linearizability.pml:265 (state 117)	[location[k] = MT]
+		committed[0] = 0
+		committed[1] = 1
+ 47:	proc  6 (Populator:1) populate_lookup_linearizability.pml:266 (state 118)	[persisted[k] = 0]
+		committed[0] = 0
+		committed[1] = 1
+ 47:	proc  6 (Populator:1) populate_lookup_linearizability.pml:267 (state 119)	[write_ref[k] = 1]
+		committed[0] = 0
+		committed[1] = 1
+		write_ref[0] = 0
+		write_ref[1] = 1
+ 47:	proc  6 (Populator:1) populate_lookup_linearizability.pml:268 (state 120)	[gen[k] = (gen[k]+1)]
+		committed[0] = 0
+		committed[1] = 1
+		write_ref[0] = 0
+		write_ref[1] = 1
+		gen[0] = 0
+		gen[1] = 1
+ 48:	proc  6 (Populator:1) populate_lookup_linearizability.pml:275 (state 122)	[write_ref[k] = 0]
+		write_ref[0] = 0
+		write_ref[1] = 0
+ 48:	proc  6 (Populator:1) populate_lookup_linearizability.pml:276 (state 123)	[read_refs[k] = (read_refs[k]+1)]
+		read_refs[0] = 0
+		read_refs[1] = 1
+		write_ref[0] = 0
+		write_ref[1] = 0
+ 49:	proc  6 (Populator:1) populate_lookup_linearizability.pml:277 (state 124)	[write_q!k,gen[k]]
+		queue 1 (write_q): [1,1]
+ 49:	proc  6 (Populator:1) populate_lookup_linearizability.pml:278 (state 125)	[pop_ret[k] = POP_OK_CACHED]
+		pop_ret[0] = POP_NONE
+		pop_ret[1] = POP_OK_CACHED
+		queue 1 (write_q): [1,1]
+ 50:	proc  6 (Populator:1) populate_lookup_linearizability.pml:282 (state 129)	[pop_done = (pop_done+1)]
+		queue 1 (write_q): [1,1]
+		pop_done = 1
+ 51:	proc  5 (Populator:1) populate_lookup_linearizability.pml:213 (state 12)	[else]
+		queue 1 (write_q): [1,1]
+ 52:	proc  5 (Populator:1) populate_lookup_linearizability.pml:213 (state 13)	[(1)]
+		queue 1 (write_q): [1,1]
+ 53:	proc  5 (Populator:1) populate_lookup_linearizability.pml:218 (state 19)	[(!(reserved))]
+		queue 1 (write_q): [1,1]
+ 54:	proc  5 (Populator:1) populate_lookup_linearizability.pml:167 (state 20)	[v = 0]
+		queue 1 (write_q): [1,1]
+ 55:	proc  5 (Populator:1) populate_lookup_linearizability.pml:168 (state 21)	[freed = 0]
+		queue 1 (write_q): [1,1]
+ 55:	proc  5 (Populator:1) populate_lookup_linearizability.pml:169 (state 22)	[v = 0]
+		queue 1 (write_q): [1,1]
+ 56:	proc  5 (Populator:1) populate_lookup_linearizability.pml:171 (state 23)	[((v<2))]
+		queue 1 (write_q): [1,1]
+ 57:	proc  5 (Populator:1) populate_lookup_linearizability.pml:176 (state 26)	[else]
+		queue 1 (write_q): [1,1]
+ 58:	proc  5 (Populator:1) populate_lookup_linearizability.pml:176 (state 27)	[v = (v+1)]
+		queue 1 (write_q): [1,1]
+ 59:	proc  5 (Populator:1) populate_lookup_linearizability.pml:171 (state 23)	[((v<2))]
+		queue 1 (write_q): [1,1]
+ 60:	proc  5 (Populator:1) populate_lookup_linearizability.pml:176 (state 26)	[else]
+		queue 1 (write_q): [1,1]
+ 61:	proc  5 (Populator:1) populate_lookup_linearizability.pml:176 (state 27)	[v = (v+1)]
+		queue 1 (write_q): [1,1]
+ 62:	proc  5 (Populator:1) populate_lookup_linearizability.pml:178 (state 30)	[((v>=2))]
+		queue 1 (write_q): [1,1]
+ 63:	proc  5 (Populator:1) populate_lookup_linearizability.pml:185 (state 39)	[else]
+		queue 1 (write_q): [1,1]
+ 64:	proc  5 (Populator:1) populate_lookup_linearizability.pml:185 (state 40)	[(1)]
+		queue 1 (write_q): [1,1]
+ 65:	proc  5 (Populator:1) populate_lookup_linearizability.pml:191 (state 55)	[else]
+		queue 1 (write_q): [1,1]
+ 66:	proc  5 (Populator:1) populate_lookup_linearizability.pml:191 (state 56)	[(1)]
+		queue 1 (write_q): [1,1]
+ 67:	proc  5 (Populator:1) populate_lookup_linearizability.pml:222 (state 62)	[(!(freed))]
+		queue 1 (write_q): [1,1]
+ 67:	proc  5 (Populator:1) populate_lookup_linearizability.pml:223 (state 63)	[tries = (tries+1)]
+		queue 1 (write_q): [1,1]
+ 68:	proc  5 (Populator:1) populate_lookup_linearizability.pml:226 (state 66)	[else]
+		queue 1 (write_q): [1,1]
+ 69:	proc  5 (Populator:1) populate_lookup_linearizability.pml:226 (state 67)	[(1)]
+		queue 1 (write_q): [1,1]
+ 70:	proc  5 (Populator:1) populate_lookup_linearizability.pml:204 (state 4)	[(!(reserved))]
+		queue 1 (write_q): [1,1]
+ 71:	proc  5 (Populator:1) populate_lookup_linearizability.pml:213 (state 12)	[else]
+		queue 1 (write_q): [1,1]
+ 72:	proc  5 (Populator:1) populate_lookup_linearizability.pml:213 (state 13)	[(1)]
+		queue 1 (write_q): [1,1]
+ 73:	proc  5 (Populator:1) populate_lookup_linearizability.pml:218 (state 19)	[(!(reserved))]
+		queue 1 (write_q): [1,1]
+ 74:	proc  5 (Populator:1) populate_lookup_linearizability.pml:167 (state 20)	[v = 0]
+		queue 1 (write_q): [1,1]
+ 75:	proc  5 (Populator:1) populate_lookup_linearizability.pml:168 (state 21)	[freed = 0]
+		queue 1 (write_q): [1,1]
+ 75:	proc  5 (Populator:1) populate_lookup_linearizability.pml:169 (state 22)	[v = 0]
+		queue 1 (write_q): [1,1]
+ 76:	proc  5 (Populator:1) populate_lookup_linearizability.pml:171 (state 23)	[((v<2))]
+		queue 1 (write_q): [1,1]
+ 77:	proc  5 (Populator:1) populate_lookup_linearizability.pml:176 (state 26)	[else]
+		queue 1 (write_q): [1,1]
+ 78:	proc  5 (Populator:1) populate_lookup_linearizability.pml:176 (state 27)	[v = (v+1)]
+		queue 1 (write_q): [1,1]
+ 79:	proc  5 (Populator:1) populate_lookup_linearizability.pml:171 (state 23)	[((v<2))]
+		queue 1 (write_q): [1,1]
+ 80:	proc  5 (Populator:1) populate_lookup_linearizability.pml:176 (state 26)	[else]
+		queue 1 (write_q): [1,1]
+ 81:	proc  5 (Populator:1) populate_lookup_linearizability.pml:176 (state 27)	[v = (v+1)]
+		queue 1 (write_q): [1,1]
+ 82:	proc  5 (Populator:1) populate_lookup_linearizability.pml:178 (state 30)	[((v>=2))]
+		queue 1 (write_q): [1,1]
+ 83:	proc  5 (Populator:1) populate_lookup_linearizability.pml:185 (state 39)	[else]
+		queue 1 (write_q): [1,1]
+ 84:	proc  5 (Populator:1) populate_lookup_linearizability.pml:185 (state 40)	[(1)]
+		queue 1 (write_q): [1,1]
+ 85:	proc  5 (Populator:1) populate_lookup_linearizability.pml:191 (state 55)	[else]
+		queue 1 (write_q): [1,1]
+ 86:	proc  5 (Populator:1) populate_lookup_linearizability.pml:191 (state 56)	[(1)]
+		queue 1 (write_q): [1,1]
+ 87:	proc  5 (Populator:1) populate_lookup_linearizability.pml:222 (state 62)	[(!(freed))]
+		queue 1 (write_q): [1,1]
+ 87:	proc  5 (Populator:1) populate_lookup_linearizability.pml:223 (state 63)	[tries = (tries+1)]
+		queue 1 (write_q): [1,1]
+ 88:	proc  5 (Populator:1) populate_lookup_linearizability.pml:226 (state 66)	[else]
+		queue 1 (write_q): [1,1]
+ 89:	proc  5 (Populator:1) populate_lookup_linearizability.pml:226 (state 67)	[(1)]
+		queue 1 (write_q): [1,1]
+ 90:	proc  5 (Populator:1) populate_lookup_linearizability.pml:204 (state 4)	[(!(reserved))]
+		queue 1 (write_q): [1,1]
+ 91:	proc  5 (Populator:1) populate_lookup_linearizability.pml:213 (state 12)	[else]
+		queue 1 (write_q): [1,1]
+ 92:	proc  5 (Populator:1) populate_lookup_linearizability.pml:213 (state 13)	[(1)]
+		queue 1 (write_q): [1,1]
+ 93:	proc  5 (Populator:1) populate_lookup_linearizability.pml:218 (state 19)	[(!(reserved))]
+		queue 1 (write_q): [1,1]
+ 94:	proc  5 (Populator:1) populate_lookup_linearizability.pml:167 (state 20)	[v = 0]
+		queue 1 (write_q): [1,1]
+ 95:	proc  5 (Populator:1) populate_lookup_linearizability.pml:168 (state 21)	[freed = 0]
+		queue 1 (write_q): [1,1]
+ 95:	proc  5 (Populator:1) populate_lookup_linearizability.pml:169 (state 22)	[v = 0]
+		queue 1 (write_q): [1,1]
+ 96:	proc  5 (Populator:1) populate_lookup_linearizability.pml:171 (state 23)	[((v<2))]
+		queue 1 (write_q): [1,1]
+ 97:	proc  5 (Populator:1) populate_lookup_linearizability.pml:176 (state 26)	[else]
+		queue 1 (write_q): [1,1]
+ 98:	proc  5 (Populator:1) populate_lookup_linearizability.pml:176 (state 27)	[v = (v+1)]
+		queue 1 (write_q): [1,1]
+ 99:	proc  5 (Populator:1) populate_lookup_linearizability.pml:171 (state 23)	[((v<2))]
+		queue 1 (write_q): [1,1]
+100:	proc  5 (Populator:1) populate_lookup_linearizability.pml:176 (state 26)	[else]
+		queue 1 (write_q): [1,1]
+101:	proc  5 (Populator:1) populate_lookup_linearizability.pml:176 (state 27)	[v = (v+1)]
+		queue 1 (write_q): [1,1]
+102:	proc  5 (Populator:1) populate_lookup_linearizability.pml:178 (state 30)	[((v>=2))]
+		queue 1 (write_q): [1,1]
+103:	proc  5 (Populator:1) populate_lookup_linearizability.pml:185 (state 39)	[else]
+		queue 1 (write_q): [1,1]
+104:	proc  5 (Populator:1) populate_lookup_linearizability.pml:185 (state 40)	[(1)]
+		queue 1 (write_q): [1,1]
+105:	proc  5 (Populator:1) populate_lookup_linearizability.pml:191 (state 55)	[else]
+		queue 1 (write_q): [1,1]
+106:	proc  5 (Populator:1) populate_lookup_linearizability.pml:191 (state 56)	[(1)]
+		queue 1 (write_q): [1,1]
+107:	proc  5 (Populator:1) populate_lookup_linearizability.pml:222 (state 62)	[(!(freed))]
+		queue 1 (write_q): [1,1]
+107:	proc  5 (Populator:1) populate_lookup_linearizability.pml:223 (state 63)	[tries = (tries+1)]
+		queue 1 (write_q): [1,1]
+108:	proc  5 (Populator:1) populate_lookup_linearizability.pml:226 (state 66)	[else]
+		queue 1 (write_q): [1,1]
+109:	proc  5 (Populator:1) populate_lookup_linearizability.pml:226 (state 67)	[(1)]
+		queue 1 (write_q): [1,1]
+110:	proc  5 (Populator:1) populate_lookup_linearizability.pml:204 (state 4)	[(!(reserved))]
+		queue 1 (write_q): [1,1]
+111:	proc  5 (Populator:1) populate_lookup_linearizability.pml:213 (state 12)	[else]
+		queue 1 (write_q): [1,1]
+112:	proc  5 (Populator:1) populate_lookup_linearizability.pml:213 (state 13)	[(1)]
+		queue 1 (write_q): [1,1]
+113:	proc  5 (Populator:1) populate_lookup_linearizability.pml:218 (state 19)	[(!(reserved))]
+		queue 1 (write_q): [1,1]
+114:	proc  5 (Populator:1) populate_lookup_linearizability.pml:167 (state 20)	[v = 0]
+		queue 1 (write_q): [1,1]
+115:	proc  3 (Remover:1) populate_lookup_linearizability.pml:372 (state 8)	[((!(committed[k])||!(write_ref[k])))]
+		queue 1 (write_q): [1,1]
+116:	proc  3 (Remover:1) populate_lookup_linearizability.pml:372 (state 9)	[(1)]
+		queue 1 (write_q): [1,1]
+117:	proc  3 (Remover:1) populate_lookup_linearizability.pml:382 (state 18)	[(!(committed[k]))]
+		queue 1 (write_q): [1,1]
+117:	proc  3 (Remover:1) populate_lookup_linearizability.pml:383 (state 19)	[rm_ret = R_KNF_ABSENT]
+		rm_ret = R_KNF_ABSENT
+		queue 1 (write_q): [1,1]
+117:	proc  3 (Remover:1) populate_lookup_linearizability.pml:384 (state 20)	[assert(!(committed[k]))]
+		rm_ret = R_KNF_ABSENT
+		queue 1 (write_q): [1,1]
+118:	proc  3 (Remover:1) populate_lookup_linearizability.pml:404 (state 45)	[(1)]
+		queue 1 (write_q): [1,1]
+119:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:315 (state 1)	[(!(shutdown))]
+		queue 1 (write_q): [1,1]
+120:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:167 (state 2)	[v = 0]
+		queue 1 (write_q): [1,1]
+121:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:168 (state 3)	[freed = 0]
+		queue 1 (write_q): [1,1]
+121:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:169 (state 4)	[v = 0]
+		queue 1 (write_q): [1,1]
+122:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:171 (state 5)	[((v<2))]
+		queue 1 (write_q): [1,1]
+123:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:176 (state 8)	[else]
+		queue 1 (write_q): [1,1]
+124:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:176 (state 9)	[v = (v+1)]
+		queue 1 (write_q): [1,1]
+125:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:171 (state 5)	[((v<2))]
+		queue 1 (write_q): [1,1]
+126:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:176 (state 8)	[else]
+		queue 1 (write_q): [1,1]
+127:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:176 (state 9)	[v = (v+1)]
+		queue 1 (write_q): [1,1]
+128:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:178 (state 12)	[((v>=2))]
+		queue 1 (write_q): [1,1]
+129:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:185 (state 21)	[else]
+		queue 1 (write_q): [1,1]
+130:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:185 (state 22)	[(1)]
+		queue 1 (write_q): [1,1]
+131:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:191 (state 37)	[else]
+		queue 1 (write_q): [1,1]
+132:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:191 (state 38)	[(1)]
+		queue 1 (write_q): [1,1]
+133:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:315 (state 1)	[(!(shutdown))]
+		queue 1 (write_q): [1,1]
+134:	proc  1 (BgWriter:1) populate_lookup_linearizability.pml:295 (state 1)	[write_q?jk,jg]
+		queue 1 (write_q): 
+135:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:167 (state 2)	[v = 0]
+		queue 1 (write_q): 
+136:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:168 (state 3)	[freed = 0]
+		queue 1 (write_q): 
+136:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:169 (state 4)	[v = 0]
+		queue 1 (write_q): 
+137:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:171 (state 5)	[((v<2))]
+		queue 1 (write_q): 
+138:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:176 (state 8)	[else]
+		queue 1 (write_q): 
+139:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:176 (state 9)	[v = (v+1)]
+		queue 1 (write_q): 
+140:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:171 (state 5)	[((v<2))]
+		queue 1 (write_q): 
+141:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:176 (state 8)	[else]
+		queue 1 (write_q): 
+142:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:176 (state 9)	[v = (v+1)]
+		queue 1 (write_q): 
+143:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:178 (state 12)	[((v>=2))]
+		queue 1 (write_q): 
+144:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:185 (state 21)	[else]
+		queue 1 (write_q): 
+145:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:185 (state 22)	[(1)]
+		queue 1 (write_q): 
+146:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:191 (state 37)	[else]
+		queue 1 (write_q): 
+147:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:191 (state 38)	[(1)]
+		queue 1 (write_q): 
+148:	proc  1 (BgWriter:1) populate_lookup_linearizability.pml:298 (state 2)	[assert(((committed[jk]&&(gen[jk]==jg))&&(location[jk]==MT)))]
+		queue 1 (write_q): 
+148:	proc  1 (BgWriter:1) populate_lookup_linearizability.pml:299 (state 3)	[assert((in_pool[jk]&&(read_refs[jk]>0)))]
+		queue 1 (write_q): 
+149:	proc  1 (BgWriter:1) populate_lookup_linearizability.pml:301 (state 4)	[(1)]
+		queue 1 (write_q): 
+149:	proc  1 (BgWriter:1) populate_lookup_linearizability.pml:301 (state 5)	[persisted[jk] = 1]
+		persisted[0] = 0
+		persisted[1] = 1
+		queue 1 (write_q): 
+149:	proc  1 (BgWriter:1) populate_lookup_linearizability.pml:304 (state 10)	[read_refs[jk] = (read_refs[jk]-1)]
+		persisted[0] = 0
+		persisted[1] = 1
+		read_refs[0] = 0
+		read_refs[1] = 0
+		queue 1 (write_q): 
+150:	proc  5 (Populator:1) populate_lookup_linearizability.pml:168 (state 21)	[freed = 0]
+		queue 1 (write_q): 
+150:	proc  5 (Populator:1) populate_lookup_linearizability.pml:169 (state 22)	[v = 0]
+		queue 1 (write_q): 
+151:	proc  5 (Populator:1) populate_lookup_linearizability.pml:171 (state 23)	[((v<2))]
+		queue 1 (write_q): 
+152:	proc  5 (Populator:1) populate_lookup_linearizability.pml:176 (state 26)	[else]
+		queue 1 (write_q): 
+153:	proc  5 (Populator:1) populate_lookup_linearizability.pml:176 (state 27)	[v = (v+1)]
+		queue 1 (write_q): 
+154:	proc  5 (Populator:1) populate_lookup_linearizability.pml:171 (state 23)	[((v<2))]
+		queue 1 (write_q): 
+155:	proc  5 (Populator:1) populate_lookup_linearizability.pml:174 (state 24)	[((((((in_pool[v]&&committed[v])&&(location[v]==MT))&&(read_refs[v]==0))&&!(write_ref[v]))&&persisted[v]))]
+		queue 1 (write_q): 
+156:	proc  5 (Populator:1) populate_lookup_linearizability.pml:181 (state 35)	[((v<2))]
+		queue 1 (write_q): 
+156:	proc  5 (Populator:1) populate_lookup_linearizability.pml:182 (state 36)	[assert(((read_refs[v]==0)&&!(write_ref[v])))]
+		queue 1 (write_q): 
+156:	proc  5 (Populator:1) populate_lookup_linearizability.pml:183 (state 37)	[location[v] = SSD]
+		location[0] = MT
+		location[1] = SSD
+		queue 1 (write_q): 
+156:	proc  5 (Populator:1) populate_lookup_linearizability.pml:184 (state 38)	[freed = 1]
+		location[0] = MT
+		location[1] = SSD
+		queue 1 (write_q): 
+157:	proc  5 (Populator:1) populate_lookup_linearizability.pml:189 (state 44)	[(freed)]
+		queue 1 (write_q): 
+158:	proc  5 (Populator:1) populate_lookup_linearizability.pml:149 (state 45)	[(in_pool[v])]
+		queue 1 (write_q): 
+158:	proc  5 (Populator:1) populate_lookup_linearizability.pml:149 (state 46)	[in_pool[v] = 0]
+		in_pool[0] = 0
+		in_pool[1] = 0
+		queue 1 (write_q): 
+158:	proc  5 (Populator:1) populate_lookup_linearizability.pml:149 (state 47)	[pool_used = (pool_used-1)]
+		in_pool[0] = 0
+		in_pool[1] = 0
+		pool_used = 0
+		queue 1 (write_q): 
+158:	proc  5 (Populator:1) populate_lookup_linearizability.pml:149 (state 48)	[slot_id[v] = 0]
+		in_pool[0] = 0
+		in_pool[1] = 0
+		slot_id[0] = 0
+		slot_id[1] = 0
+		pool_used = 0
+		queue 1 (write_q): 
+159:	proc  5 (Populator:1) populate_lookup_linearizability.pml:221 (state 60)	[(freed)]
+		queue 1 (write_q): 
+160:	proc  5 (Populator:1) populate_lookup_linearizability.pml:221 (state 61)	[(1)]
+		queue 1 (write_q): 
+161:	proc  5 (Populator:1) populate_lookup_linearizability.pml:204 (state 4)	[(!(reserved))]
+		queue 1 (write_q): 
+162:	proc  5 (Populator:1) populate_lookup_linearizability.pml:210 (state 5)	[((!(in_pool[k])&&(pool_used<1)))]
+		queue 1 (write_q): 
+163:	proc  5 (Populator:1) populate_lookup_linearizability.pml:139 (state 6)	[in_pool[k] = 1]
+		in_pool[0] = 1
+		in_pool[1] = 0
+		queue 1 (write_q): 
+163:	proc  5 (Populator:1) populate_lookup_linearizability.pml:140 (state 7)	[pool_used = (pool_used+1)]
+		in_pool[0] = 1
+		in_pool[1] = 0
+		pool_used = 1
+		queue 1 (write_q): 
+163:	proc  5 (Populator:1) populate_lookup_linearizability.pml:141 (state 8)	[slot_id[k] = next_slot]
+		in_pool[0] = 1
+		in_pool[1] = 0
+		slot_id[0] = 2
+		slot_id[1] = 0
+		pool_used = 1
+		queue 1 (write_q): 
+163:	proc  5 (Populator:1) populate_lookup_linearizability.pml:142 (state 9)	[next_slot = ((next_slot%7)+1)]
+		in_pool[0] = 1
+		in_pool[1] = 0
+		slot_id[0] = 2
+		slot_id[1] = 0
+		next_slot = 3
+		pool_used = 1
+		queue 1 (write_q): 
+163:	proc  5 (Populator:1) populate_lookup_linearizability.pml:212 (state 11)	[reserved = 1]
+		in_pool[0] = 1
+		in_pool[1] = 0
+		slot_id[0] = 2
+		slot_id[1] = 0
+		next_slot = 3
+		pool_used = 1
+		queue 1 (write_q): 
+164:	proc  5 (Populator:1) populate_lookup_linearizability.pml:217 (state 17)	[(reserved)]
+		queue 1 (write_q): 
+165:	proc  5 (Populator:1) populate_lookup_linearizability.pml:217 (state 18)	[(1)]
+		queue 1 (write_q): 
+166:	proc  5 (Populator:1) populate_lookup_linearizability.pml:230 (state 74)	[(reserved)]
+		queue 1 (write_q): 
+167:	proc  5 (Populator:1) populate_lookup_linearizability.pml:238 (state 82)	[(reserved)]
+		queue 1 (write_q): 
+168:	proc  5 (Populator:1) populate_lookup_linearizability.pml:241 (state 83)	[(1)]
+		queue 1 (write_q): 
+169:	proc  5 (Populator:1) populate_lookup_linearizability.pml:242 (state 84)	[(1)]
+		queue 1 (write_q): 
+170:	proc  5 (Populator:1) populate_lookup_linearizability.pml:263 (state 115)	[assert(!(committed[k]))]
+		queue 1 (write_q): 
+170:	proc  5 (Populator:1) populate_lookup_linearizability.pml:264 (state 116)	[committed[k] = 1]
+		committed[0] = 1
+		committed[1] = 1
+		queue 1 (write_q): 
+170:	proc  5 (Populator:1) populate_lookup_linearizability.pml:265 (state 117)	[location[k] = MT]
+		committed[0] = 1
+		committed[1] = 1
+		queue 1 (write_q): 
+170:	proc  5 (Populator:1) populate_lookup_linearizability.pml:266 (state 118)	[persisted[k] = 0]
+		committed[0] = 1
+		committed[1] = 1
+		queue 1 (write_q): 
+170:	proc  5 (Populator:1) populate_lookup_linearizability.pml:267 (state 119)	[write_ref[k] = 1]
+		committed[0] = 1
+		committed[1] = 1
+		write_ref[0] = 1
+		write_ref[1] = 0
+		queue 1 (write_q): 
+170:	proc  5 (Populator:1) populate_lookup_linearizability.pml:268 (state 120)	[gen[k] = (gen[k]+1)]
+		committed[0] = 1
+		committed[1] = 1
+		write_ref[0] = 1
+		write_ref[1] = 0
+		gen[0] = 1
+		gen[1] = 1
+		queue 1 (write_q): 
+171:	proc  5 (Populator:1) populate_lookup_linearizability.pml:275 (state 122)	[write_ref[k] = 0]
+		write_ref[0] = 0
+		write_ref[1] = 0
+		queue 1 (write_q): 
+171:	proc  5 (Populator:1) populate_lookup_linearizability.pml:276 (state 123)	[read_refs[k] = (read_refs[k]+1)]
+		read_refs[0] = 1
+		read_refs[1] = 0
+		write_ref[0] = 0
+		write_ref[1] = 0
+		queue 1 (write_q): 
+172:	proc  5 (Populator:1) populate_lookup_linearizability.pml:277 (state 124)	[write_q!k,gen[k]]
+		queue 1 (write_q): [0,1]
+172:	proc  5 (Populator:1) populate_lookup_linearizability.pml:278 (state 125)	[pop_ret[k] = POP_OK_CACHED]
+		pop_ret[0] = POP_OK_CACHED
+		pop_ret[1] = POP_OK_CACHED
+		queue 1 (write_q): [0,1]
+173:	proc  5 (Populator:1) populate_lookup_linearizability.pml:282 (state 129)	[pop_done = (pop_done+1)]
+		queue 1 (write_q): [0,1]
+		pop_done = 2
+174:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:315 (state 1)	[(!(shutdown))]
+		queue 1 (write_q): [0,1]
+175:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:167 (state 2)	[v = 0]
+		queue 1 (write_q): [0,1]
+176:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:168 (state 3)	[freed = 0]
+		queue 1 (write_q): [0,1]
+176:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:169 (state 4)	[v = 0]
+		queue 1 (write_q): [0,1]
+177:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:171 (state 5)	[((v<2))]
+		queue 1 (write_q): [0,1]
+178:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:176 (state 8)	[else]
+		queue 1 (write_q): [0,1]
+179:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:176 (state 9)	[v = (v+1)]
+		queue 1 (write_q): [0,1]
+180:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:171 (state 5)	[((v<2))]
+		queue 1 (write_q): [0,1]
+181:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:176 (state 8)	[else]
+		queue 1 (write_q): [0,1]
+182:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:176 (state 9)	[v = (v+1)]
+		queue 1 (write_q): [0,1]
+183:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:178 (state 12)	[((v>=2))]
+		queue 1 (write_q): [0,1]
+184:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:185 (state 21)	[else]
+		queue 1 (write_q): [0,1]
+185:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:185 (state 22)	[(1)]
+		queue 1 (write_q): [0,1]
+186:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:191 (state 37)	[else]
+		queue 1 (write_q): [0,1]
+187:	proc  1 (BgWriter:1) populate_lookup_linearizability.pml:295 (state 1)	[write_q?jk,jg]
+		queue 1 (write_q): 
+188:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:191 (state 38)	[(1)]
+		queue 1 (write_q): 
+189:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:315 (state 1)	[(!(shutdown))]
+		queue 1 (write_q): 
+190:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:167 (state 2)	[v = 0]
+		queue 1 (write_q): 
+191:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:168 (state 3)	[freed = 0]
+		queue 1 (write_q): 
+191:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:169 (state 4)	[v = 0]
+		queue 1 (write_q): 
+192:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:171 (state 5)	[((v<2))]
+		queue 1 (write_q): 
+193:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:176 (state 8)	[else]
+		queue 1 (write_q): 
+194:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:176 (state 9)	[v = (v+1)]
+		queue 1 (write_q): 
+195:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:171 (state 5)	[((v<2))]
+		queue 1 (write_q): 
+196:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:176 (state 8)	[else]
+		queue 1 (write_q): 
+197:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:176 (state 9)	[v = (v+1)]
+		queue 1 (write_q): 
+198:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:178 (state 12)	[((v>=2))]
+		queue 1 (write_q): 
+199:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:185 (state 21)	[else]
+		queue 1 (write_q): 
+200:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:185 (state 22)	[(1)]
+		queue 1 (write_q): 
+201:	proc  1 (BgWriter:1) populate_lookup_linearizability.pml:298 (state 2)	[assert(((committed[jk]&&(gen[jk]==jg))&&(location[jk]==MT)))]
+		queue 1 (write_q): 
+201:	proc  1 (BgWriter:1) populate_lookup_linearizability.pml:299 (state 3)	[assert((in_pool[jk]&&(read_refs[jk]>0)))]
+		queue 1 (write_q): 
+202:	proc  1 (BgWriter:1) populate_lookup_linearizability.pml:301 (state 4)	[(1)]
+		queue 1 (write_q): 
+202:	proc  1 (BgWriter:1) populate_lookup_linearizability.pml:301 (state 5)	[persisted[jk] = 1]
+		persisted[0] = 1
+		persisted[1] = 1
+		queue 1 (write_q): 
+202:	proc  1 (BgWriter:1) populate_lookup_linearizability.pml:304 (state 10)	[read_refs[jk] = (read_refs[jk]-1)]
+		persisted[0] = 1
+		persisted[1] = 1
+		read_refs[0] = 0
+		read_refs[1] = 0
+		queue 1 (write_q): 
+203:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:191 (state 37)	[else]
+		queue 1 (write_q): 
+204:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:191 (state 38)	[(1)]
+		queue 1 (write_q): 
+205:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:315 (state 1)	[(!(shutdown))]
+		queue 1 (write_q): 
+206:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:167 (state 2)	[v = 0]
+		queue 1 (write_q): 
+207:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:168 (state 3)	[freed = 0]
+		queue 1 (write_q): 
+207:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:169 (state 4)	[v = 0]
+		queue 1 (write_q): 
+208:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:171 (state 5)	[((v<2))]
+		queue 1 (write_q): 
+209:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:174 (state 6)	[((((((in_pool[v]&&committed[v])&&(location[v]==MT))&&(read_refs[v]==0))&&!(write_ref[v]))&&persisted[v]))]
+		queue 1 (write_q): 
+210:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:181 (state 17)	[((v<2))]
+		queue 1 (write_q): 
+210:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:182 (state 18)	[assert(((read_refs[v]==0)&&!(write_ref[v])))]
+		queue 1 (write_q): 
+210:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:183 (state 19)	[location[v] = SSD]
+		location[0] = SSD
+		location[1] = SSD
+		queue 1 (write_q): 
+210:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:184 (state 20)	[freed = 1]
+		location[0] = SSD
+		location[1] = SSD
+		queue 1 (write_q): 
+211:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:189 (state 26)	[(freed)]
+		queue 1 (write_q): 
+212:	proc  7 (Looker:1) populate_lookup_linearizability.pml:433 (state 11)	[((!(committed[k])||!(write_ref[k])))]
+		queue 1 (write_q): 
+212:	proc  7 (Looker:1) populate_lookup_linearizability.pml:437 (state 12)	[saw_pop_ok = (pop_ret[k]==POP_OK_CACHED)]
+		queue 1 (write_q): 
+212:	proc  7 (Looker:1) populate_lookup_linearizability.pml:439 (state 13)	[saw_departed = departed[k]]
+		queue 1 (write_q): 
+213:	proc  7 (Looker:1) populate_lookup_linearizability.pml:443 (state 16)	[else]
+		queue 1 (write_q): 
+214:	proc  7 (Looker:1) populate_lookup_linearizability.pml:444 (state 17)	[res = location[k]]
+		queue 1 (write_q): 
+214:	proc  7 (Looker:1) populate_lookup_linearizability.pml:445 (state 18)	[read_refs[k] = (read_refs[k]+1)]
+		read_refs[0] = 1
+		read_refs[1] = 0
+		queue 1 (write_q): 
+215:	proc  7 (Looker:1) populate_lookup_linearizability.pml:471 (state 37)	[(((ret==L_NONE)&&(res==SSD)))]
+		queue 1 (write_q): 
+215:	proc  7 (Looker:1) populate_lookup_linearizability.pml:479 (state 38)	[mine = 0]
+		queue 1 (write_q): 
+216:	proc  4 (SsdEvictor:1) populate_lookup_linearizability.pml:334 (state 8)	[(((committed[k]&&!(write_ref[k]))&&(location[k]==SSD)))]
+		queue 1 (write_q): 
+217:	proc  4 (SsdEvictor:1) populate_lookup_linearizability.pml:334 (state 9)	[(1)]
+		queue 1 (write_q): 
+218:	proc  4 (SsdEvictor:1) populate_lookup_linearizability.pml:149 (state 15)	[(in_pool[k])]
+		queue 1 (write_q): 
+218:	proc  4 (SsdEvictor:1) populate_lookup_linearizability.pml:149 (state 16)	[in_pool[k] = 0]
+		in_pool[0] = 0
+		in_pool[1] = 0
+		queue 1 (write_q): 
+218:	proc  4 (SsdEvictor:1) populate_lookup_linearizability.pml:149 (state 17)	[pool_used = (pool_used-1)]
+		in_pool[0] = 0
+		in_pool[1] = 0
+		pool_used = 0
+		queue 1 (write_q): 
+218:	proc  4 (SsdEvictor:1) populate_lookup_linearizability.pml:149 (state 18)	[slot_id[k] = 0]
+		in_pool[0] = 0
+		in_pool[1] = 0
+		slot_id[0] = 0
+		slot_id[1] = 0
+		pool_used = 0
+		queue 1 (write_q): 
+219:	proc  7 (Looker:1) populate_lookup_linearizability.pml:485 (state 42)	[((!(in_pool[k])&&(pool_used<1)))]
+		queue 1 (write_q): 
+220:	proc  7 (Looker:1) populate_lookup_linearizability.pml:139 (state 43)	[in_pool[k] = 1]
+		in_pool[0] = 1
+		in_pool[1] = 0
+		queue 1 (write_q): 
+220:	proc  7 (Looker:1) populate_lookup_linearizability.pml:140 (state 44)	[pool_used = (pool_used+1)]
+		in_pool[0] = 1
+		in_pool[1] = 0
+		pool_used = 1
+		queue 1 (write_q): 
+220:	proc  7 (Looker:1) populate_lookup_linearizability.pml:141 (state 45)	[slot_id[k] = next_slot]
+		in_pool[0] = 1
+		in_pool[1] = 0
+		slot_id[0] = 3
+		slot_id[1] = 0
+		pool_used = 1
+		queue 1 (write_q): 
+220:	proc  7 (Looker:1) populate_lookup_linearizability.pml:142 (state 46)	[next_slot = ((next_slot%7)+1)]
+		in_pool[0] = 1
+		in_pool[1] = 0
+		slot_id[0] = 3
+		slot_id[1] = 0
+		next_slot = 4
+		pool_used = 1
+		queue 1 (write_q): 
+220:	proc  7 (Looker:1) populate_lookup_linearizability.pml:486 (state 48)	[mine = 1]
+		in_pool[0] = 1
+		in_pool[1] = 0
+		slot_id[0] = 3
+		slot_id[1] = 0
+		next_slot = 4
+		pool_used = 1
+		queue 1 (write_q): 
+220:	proc  7 (Looker:1) populate_lookup_linearizability.pml:486 (state 49)	[my_slot = slot_id[k]]
+		in_pool[0] = 1
+		in_pool[1] = 0
+		slot_id[0] = 3
+		slot_id[1] = 0
+		next_slot = 4
+		pool_used = 1
+		queue 1 (write_q): 
+221:	proc  7 (Looker:1) populate_lookup_linearizability.pml:506 (state 113)	[else]
+		queue 1 (write_q): 
+222:	proc  7 (Looker:1) populate_lookup_linearizability.pml:506 (state 114)	[(1)]
+		queue 1 (write_q): 
+223:	proc  7 (Looker:1) populate_lookup_linearizability.pml:513 (state 121)	[(mine)]
+		queue 1 (write_q): 
+224:	proc  7 (Looker:1) populate_lookup_linearizability.pml:515 (state 122)	[(1)]
+		queue 1 (write_q): 
+225:	proc  4 (SsdEvictor:1) populate_lookup_linearizability.pml:353 (state 30)	[else]
+		queue 1 (write_q): 
+226:	proc  4 (SsdEvictor:1) populate_lookup_linearizability.pml:353 (state 31)	[(1)]
+		queue 1 (write_q): 
+227:	proc  4 (SsdEvictor:1) populate_lookup_linearizability.pml:358 (state 35)	[(1)]
+		queue 1 (write_q): 
+228:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:149 (state 27)	[(in_pool[v])]
+		queue 1 (write_q): 
+228:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:149 (state 28)	[in_pool[v] = 0]
+		in_pool[0] = 0
+		in_pool[1] = 0
+		queue 1 (write_q): 
+228:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:149 (state 29)	[pool_used = (pool_used-1)]
+		in_pool[0] = 0
+		in_pool[1] = 0
+		pool_used = 0
+		queue 1 (write_q): 
+228:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:149 (state 30)	[slot_id[v] = 0]
+		in_pool[0] = 0
+		in_pool[1] = 0
+		slot_id[0] = 0
+		slot_id[1] = 0
+		pool_used = 0
+		queue 1 (write_q): 
+spin: populate_lookup_linearizability.pml:518, Error: assertion violated
+spin: text of failed assertion: assert((in_pool[k]&&(slot_id[k]==my_slot)))
+229:	proc  7 (Looker:1) populate_lookup_linearizability.pml:518 (state 123)	[assert((in_pool[k]&&(slot_id[k]==my_slot)))]
+		queue 1 (write_q): 
+spin: trail ends after 229 steps
+#processes: 8
+		committed[0] = 1
+		committed[1] = 1
+		location[0] = SSD
+		location[1] = SSD
+		persisted[0] = 1
+		persisted[1] = 1
+		read_refs[0] = 1
+		read_refs[1] = 0
+		write_ref[0] = 0
+		write_ref[1] = 0
+		in_pool[0] = 0
+		in_pool[1] = 0
+		slot_id[0] = 0
+		slot_id[1] = 0
+		next_slot = 4
+		pool_used = 0
+		gen[0] = 1
+		gen[1] = 1
+		pop_ret[0] = POP_OK_CACHED
+		pop_ret[1] = POP_OK_CACHED
+		departed[0] = 0
+		departed[1] = 0
+		rm_ret = R_KNF_ABSENT
+		queue 1 (write_q): 
+		pop_done = 2
+		look_done = 1
+		shutdown = 0
+229:	proc  7 (Looker:1) populate_lookup_linearizability.pml:520 (state 131)
+229:	proc  6 (Populator:1) populate_lookup_linearizability.pml:288 (state 131) <valid end state>
+229:	proc  5 (Populator:1) populate_lookup_linearizability.pml:288 (state 131) <valid end state>
+229:	proc  4 (SsdEvictor:1) populate_lookup_linearizability.pml:359 (state 36) <valid end state>
+229:	proc  3 (Remover:1) populate_lookup_linearizability.pml:405 (state 46) <valid end state>
+229:	proc  2 (Evictor:1) populate_lookup_linearizability.pml:314 (state 44)
+229:	proc  1 (BgWriter:1) populate_lookup_linearizability.pml:294 (state 14)
+229:	proc  0 (:init::1) populate_lookup_linearizability.pml:582 (state 42)
+9 processes created

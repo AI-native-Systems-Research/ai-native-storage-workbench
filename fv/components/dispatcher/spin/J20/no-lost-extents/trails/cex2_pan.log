@@ -1,0 +1,55 @@
+pan:1: assertion violated (no_drives||((extent_state[slot]==3)&&(extent_key[slot]==k))) (at depth 109)
+pan: wrote no_lost_extents.pml.trail
+
+(Spin Version 6.5.2 -- 18 September 2025)
+Warning: Search not completed
+	+ Partial Order Reduction
+
+Full statespace search for:
+	never claim         	- (none specified)
+	assertion violations	+
+	cycle checks       	- (disabled by -DSAFETY)
+	invalid end states	+
+
+State-vector 88 byte, depth reached 283, errors: 1
+   839161 states, stored
+  1188687 states, matched
+  2027848 transitions (= stored+matched)
+  1351082 atomic steps
+hash conflicts:     12232 (resolved)
+
+Stats on memory usage (in Megabytes):
+   92.833	equivalent memory usage for states (stored*(State-vector + overhead))
+   69.616	actual memory usage for states (compression: 74.99%)
+         	state-vector as stored = 59 byte + 28 byte overhead
+  128.000	memory used for hash table (-w24)
+   10.681	memory used for DFS stack (-m200000)
+  208.213	total actual memory usage
+
+
+
+pan: elapsed time 0.62 seconds
+pan: rate 1353485.5 states/second
+	Command being timed: "./pan -m200000"
+	User time (seconds): 0.55
+	System time (seconds): 0.09
+	Percent of CPU this job got: 99%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:00.65
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 214064
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 18609
+	Voluntary context switches: 1
+	Involuntary context switches: 1
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 16
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

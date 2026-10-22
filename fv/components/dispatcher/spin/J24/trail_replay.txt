@@ -1,0 +1,523 @@
+  1:	proc  0 (:init::1) promotion_lookup_race.pml:311 (state 14)	[k = 0]
+		:init:(0):k = 0
+  1:	proc  0 (:init::1) promotion_lookup_race.pml:324 (state 12)	[.(goto)]
+		:init:(0):k = 0
+  1:	proc  0 (:init::1) promotion_lookup_race.pml:313 (state 11)	[DO]
+		:init:(0):k = 0
+  1:	proc  0 (:init::1) promotion_lookup_race.pml:315 (state 3)	[dm_loc[k] = BLOCK]
+		dm_loc[0] = BLOCK
+		dm_loc[1] = 0
+		:init:(0):k = 0
+  1:	proc  0 (:init::1) promotion_lookup_race.pml:316 (state 4)	[read_refs[k] = 0]
+		dm_loc[0] = BLOCK
+		dm_loc[1] = 0
+		:init:(0):k = 0
+  1:	proc  0 (:init::1) promotion_lookup_race.pml:317 (state 5)	[mt_alloc[k] = 0]
+		dm_loc[0] = BLOCK
+		dm_loc[1] = 0
+		:init:(0):k = 0
+  1:	proc  0 (:init::1) promotion_lookup_race.pml:318 (state 6)	[resident[k] = 0]
+		dm_loc[0] = BLOCK
+		dm_loc[1] = 0
+		:init:(0):k = 0
+  1:	proc  0 (:init::1) promotion_lookup_race.pml:319 (state 7)	[win_count[k] = 0]
+		dm_loc[0] = BLOCK
+		dm_loc[1] = 0
+		:init:(0):k = 0
+  1:	proc  0 (:init::1) promotion_lookup_race.pml:320 (state 8)	[k = (k+1)]
+		dm_loc[0] = BLOCK
+		dm_loc[1] = 0
+		:init:(0):k = 1
+  1:	proc  0 (:init::1) promotion_lookup_race.pml:324 (state 12)	[.(goto)]
+		dm_loc[0] = BLOCK
+		dm_loc[1] = 0
+		:init:(0):k = 1
+  1:	proc  0 (:init::1) promotion_lookup_race.pml:313 (state 11)	[DO]
+		dm_loc[0] = BLOCK
+		dm_loc[1] = 0
+		:init:(0):k = 1
+  1:	proc  0 (:init::1) promotion_lookup_race.pml:315 (state 3)	[dm_loc[k] = BLOCK]
+		dm_loc[0] = BLOCK
+		dm_loc[1] = BLOCK
+		:init:(0):k = 1
+  1:	proc  0 (:init::1) promotion_lookup_race.pml:316 (state 4)	[read_refs[k] = 0]
+		dm_loc[0] = BLOCK
+		dm_loc[1] = BLOCK
+		:init:(0):k = 1
+  1:	proc  0 (:init::1) promotion_lookup_race.pml:317 (state 5)	[mt_alloc[k] = 0]
+		dm_loc[0] = BLOCK
+		dm_loc[1] = BLOCK
+		:init:(0):k = 1
+  1:	proc  0 (:init::1) promotion_lookup_race.pml:318 (state 6)	[resident[k] = 0]
+		dm_loc[0] = BLOCK
+		dm_loc[1] = BLOCK
+		:init:(0):k = 1
+  1:	proc  0 (:init::1) promotion_lookup_race.pml:319 (state 7)	[win_count[k] = 0]
+		dm_loc[0] = BLOCK
+		dm_loc[1] = BLOCK
+		:init:(0):k = 1
+  1:	proc  0 (:init::1) promotion_lookup_race.pml:320 (state 8)	[k = (k+1)]
+		dm_loc[0] = BLOCK
+		dm_loc[1] = BLOCK
+		:init:(0):k = 2
+  1:	proc  0 (:init::1) promotion_lookup_race.pml:324 (state 12)	[.(goto)]
+		dm_loc[0] = BLOCK
+		dm_loc[1] = BLOCK
+		:init:(0):k = 2
+  1:	proc  0 (:init::1) promotion_lookup_race.pml:313 (state 11)	[DO]
+		dm_loc[0] = BLOCK
+		dm_loc[1] = BLOCK
+		:init:(0):k = 2
+  1:	proc  0 (:init::1) promotion_lookup_race.pml:322 (state 10)	[goto :b3]
+		dm_loc[0] = BLOCK
+		dm_loc[1] = BLOCK
+		:init:(0):k = 2
+  1:	proc  0 (:init::1) promotion_lookup_race.pml:313 (state 13)	[break]
+		dm_loc[0] = BLOCK
+		dm_loc[1] = BLOCK
+		:init:(0):k = 2
+Starting Evictor with pid 1
+  2:	proc  0 (:init::1) promotion_lookup_race.pml:326 (state 15)	[(run Evictor())]
+  3:	proc  0 (:init::1) promotion_lookup_race.pml:328 (state 16)	[t = 0]
+		:init:(0):t = 0
+  4:	proc  0 (:init::1) promotion_lookup_race.pml:330 (state 17)	[((t<3))]
+  5:	proc  1 (Evictor:1) promotion_lookup_race.pml:270 (state 1)	[(!(shutdown))]
+  6:	proc  1 (Evictor:1) promotion_lookup_race.pml:272 (state 2)	[v = 0]
+		Evictor(1):v = 0
+  6:	proc  1 (Evictor:1) promotion_lookup_race.pml:273 (state 3)	[found = 0]
+		Evictor(1):found = 0
+		Evictor(1):v = 0
+  7:	proc  1 (Evictor:1) promotion_lookup_race.pml:275 (state 4)	[((v<2))]
+  8:	proc  1 (Evictor:1) promotion_lookup_race.pml:281 (state 8)	[else]
+  9:	proc  1 (Evictor:1) promotion_lookup_race.pml:282 (state 9)	[v = (v+1)]
+		Evictor(1):v = 1
+ 10:	proc  1 (Evictor:1) promotion_lookup_race.pml:275 (state 4)	[((v<2))]
+ 11:	proc  1 (Evictor:1) promotion_lookup_race.pml:281 (state 8)	[else]
+ 12:	proc  1 (Evictor:1) promotion_lookup_race.pml:282 (state 9)	[v = (v+1)]
+		Evictor(1):v = 2
+ 13:	proc  1 (Evictor:1) promotion_lookup_race.pml:284 (state 12)	[((v>=2))]
+ 14:	proc  1 (Evictor:1) promotion_lookup_race.pml:296 (state 24)	[else]
+ 15:	proc  1 (Evictor:1) promotion_lookup_race.pml:297 (state 25)	[(1)]
+ 16:	proc  1 (Evictor:1) promotion_lookup_race.pml:270 (state 1)	[(!(shutdown))]
+ 17:	proc  0 (:init::1) promotion_lookup_race.pml:331 (state 18)	[tier_ssd[t] = 0]
+ 18:	proc  1 (Evictor:1) promotion_lookup_race.pml:272 (state 2)	[v = 0]
+		Evictor(1):v = 0
+ 18:	proc  1 (Evictor:1) promotion_lookup_race.pml:273 (state 3)	[found = 0]
+		Evictor(1):found = 0
+		Evictor(1):v = 0
+ 19:	proc  1 (Evictor:1) promotion_lookup_race.pml:275 (state 4)	[((v<2))]
+ 20:	proc  1 (Evictor:1) promotion_lookup_race.pml:281 (state 8)	[else]
+ 21:	proc  1 (Evictor:1) promotion_lookup_race.pml:282 (state 9)	[v = (v+1)]
+		Evictor(1):v = 1
+ 22:	proc  1 (Evictor:1) promotion_lookup_race.pml:275 (state 4)	[((v<2))]
+ 23:	proc  1 (Evictor:1) promotion_lookup_race.pml:281 (state 8)	[else]
+ 24:	proc  1 (Evictor:1) promotion_lookup_race.pml:282 (state 9)	[v = (v+1)]
+		Evictor(1):v = 2
+ 25:	proc  1 (Evictor:1) promotion_lookup_race.pml:284 (state 12)	[((v>=2))]
+ 26:	proc  1 (Evictor:1) promotion_lookup_race.pml:296 (state 24)	[else]
+ 27:	proc  1 (Evictor:1) promotion_lookup_race.pml:297 (state 25)	[(1)]
+ 28:	proc  0 (:init::1) promotion_lookup_race.pml:332 (state 19)	[recovering[t] = 0]
+Starting LookupThread with pid 2
+ 29:	proc  0 (:init::1) promotion_lookup_race.pml:333 (state 20)	[(run LookupThread(t))]
+ 30:	proc  2 (LookupThread:1) promotion_lookup_race.pml:127 (state 1)	[((!(finished)&&(attempts<3)))]
+ 30:	proc  2 (LookupThread:1) promotion_lookup_race.pml:128 (state 2)	[attempts = (attempts+1)]
+		LookupThread(2):attempts = 1
+ 31:	proc  0 (:init::1) promotion_lookup_race.pml:334 (state 21)	[t = (t+1)]
+		:init:(0):t = 1
+ 32:	proc  0 (:init::1) promotion_lookup_race.pml:330 (state 17)	[((t<3))]
+ 33:	proc  2 (LookupThread:1) promotion_lookup_race.pml:136 (state 6)	[((dm_loc[k]==BLOCK))]
+ 33:	proc  2 (LookupThread:1) promotion_lookup_race.pml:137 (state 7)	[read_refs[k] = (read_refs[k]+1)]
+		read_refs[0] = 1
+		read_refs[1] = 0
+ 33:	proc  2 (LookupThread:1) promotion_lookup_race.pml:138 (state 8)	[cls = BLOCK]
+		read_refs[0] = 1
+		read_refs[1] = 0
+		LookupThread(2):cls = BLOCK
+ 34:	proc  2 (LookupThread:1) promotion_lookup_race.pml:146 (state 12)	[(!(recovering[tid]))]
+ 35:	proc  2 (LookupThread:1) promotion_lookup_race.pml:147 (state 13)	[tier_ssd[tid] = (cls==BLOCK)]
+		tier_ssd[0] = 1
+		tier_ssd[1] = 0
+		tier_ssd[2] = 0
+ 36:	proc  2 (LookupThread:1) promotion_lookup_race.pml:176 (state 27)	[((cls==BLOCK))]
+ 37:	proc  2 (LookupThread:1) promotion_lookup_race.pml:179 (state 28)	[assert((read_refs[k]>0))]
+ 37:	proc  2 (LookupThread:1) promotion_lookup_race.pml:180 (state 29)	[read_refs[k] = (read_refs[k]-1)]
+		read_refs[0] = 0
+		read_refs[1] = 0
+ 37:	proc  2 (LookupThread:1) promotion_lookup_race.pml:186 (state 31)	[won = 0]
+		read_refs[0] = 0
+		read_refs[1] = 0
+		LookupThread(2):won = 0
+ 37:	proc  2 (LookupThread:1) promotion_lookup_race.pml:187 (state 32)	[already = 0]
+		read_refs[0] = 0
+		read_refs[1] = 0
+		LookupThread(2):already = 0
+		LookupThread(2):won = 0
+ 37:	proc  2 (LookupThread:1) promotion_lookup_race.pml:188 (state 33)	[poolfull = 0]
+		read_refs[0] = 0
+		read_refs[1] = 0
+		LookupThread(2):poolfull = 0
+		LookupThread(2):already = 0
+		LookupThread(2):won = 0
+ 38:	proc  2 (LookupThread:1) promotion_lookup_race.pml:191 (state 34)	[((!(mt_alloc[k])&&(mt_pool_used<1)))]
+ 38:	proc  2 (LookupThread:1) promotion_lookup_race.pml:193 (state 35)	[mt_alloc[k] = 1]
+		mt_alloc[0] = 1
+		mt_alloc[1] = 0
+ 38:	proc  2 (LookupThread:1) promotion_lookup_race.pml:194 (state 36)	[mt_pool_used = (mt_pool_used+1)]
+		mt_alloc[0] = 1
+		mt_alloc[1] = 0
+		mt_pool_used = 1
+ 38:	proc  2 (LookupThread:1) promotion_lookup_race.pml:195 (state 37)	[resident[k] = 0]
+		mt_alloc[0] = 1
+		mt_alloc[1] = 0
+		mt_pool_used = 1
+ 38:	proc  2 (LookupThread:1) promotion_lookup_race.pml:196 (state 38)	[win_count[k] = (win_count[k]+1)]
+		mt_alloc[0] = 1
+		mt_alloc[1] = 0
+		mt_pool_used = 1
+		win_count[0] = 1
+		win_count[1] = 0
+ 38:	proc  2 (LookupThread:1) promotion_lookup_race.pml:197 (state 39)	[assert((win_count[k]==1))]
+		mt_alloc[0] = 1
+		mt_alloc[1] = 0
+		mt_pool_used = 1
+		win_count[0] = 1
+		win_count[1] = 0
+ 38:	proc  2 (LookupThread:1) promotion_lookup_race.pml:198 (state 40)	[won = 1]
+		mt_alloc[0] = 1
+		mt_alloc[1] = 0
+		mt_pool_used = 1
+		win_count[0] = 1
+		win_count[1] = 0
+		LookupThread(2):won = 1
+ 39:	proc  2 (LookupThread:1) promotion_lookup_race.pml:209 (state 48)	[(won)]
+ 40:	proc  2 (LookupThread:1) promotion_lookup_race.pml:220 (state 49)	[(1)]
+ 41:	proc  2 (LookupThread:1) promotion_lookup_race.pml:221 (state 50)	[resident[k] = 1]
+		resident[0] = 1
+		resident[1] = 0
+ 42:	proc  1 (Evictor:1) promotion_lookup_race.pml:270 (state 1)	[(!(shutdown))]
+ 43:	proc  0 (:init::1) promotion_lookup_race.pml:331 (state 18)	[tier_ssd[t] = 0]
+ 44:	proc  1 (Evictor:1) promotion_lookup_race.pml:272 (state 2)	[v = 0]
+		Evictor(1):v = 0
+ 44:	proc  1 (Evictor:1) promotion_lookup_race.pml:273 (state 3)	[found = 0]
+		Evictor(1):found = 0
+		Evictor(1):v = 0
+ 45:	proc  1 (Evictor:1) promotion_lookup_race.pml:275 (state 4)	[((v<2))]
+ 46:	proc  1 (Evictor:1) promotion_lookup_race.pml:281 (state 8)	[else]
+ 47:	proc  1 (Evictor:1) promotion_lookup_race.pml:282 (state 9)	[v = (v+1)]
+		Evictor(1):v = 1
+ 48:	proc  1 (Evictor:1) promotion_lookup_race.pml:275 (state 4)	[((v<2))]
+ 49:	proc  1 (Evictor:1) promotion_lookup_race.pml:281 (state 8)	[else]
+ 50:	proc  1 (Evictor:1) promotion_lookup_race.pml:282 (state 9)	[v = (v+1)]
+		Evictor(1):v = 2
+ 51:	proc  1 (Evictor:1) promotion_lookup_race.pml:284 (state 12)	[((v>=2))]
+ 52:	proc  1 (Evictor:1) promotion_lookup_race.pml:296 (state 24)	[else]
+ 53:	proc  1 (Evictor:1) promotion_lookup_race.pml:297 (state 25)	[(1)]
+ 54:	proc  0 (:init::1) promotion_lookup_race.pml:332 (state 19)	[recovering[t] = 0]
+Starting LookupThread with pid 3
+ 55:	proc  0 (:init::1) promotion_lookup_race.pml:333 (state 20)	[(run LookupThread(t))]
+ 56:	proc  3 (LookupThread:1) promotion_lookup_race.pml:127 (state 1)	[((!(finished)&&(attempts<3)))]
+ 56:	proc  3 (LookupThread:1) promotion_lookup_race.pml:128 (state 2)	[attempts = (attempts+1)]
+		LookupThread(3):attempts = 1
+ 57:	proc  0 (:init::1) promotion_lookup_race.pml:334 (state 21)	[t = (t+1)]
+		:init:(0):t = 2
+ 58:	proc  0 (:init::1) promotion_lookup_race.pml:330 (state 17)	[((t<3))]
+ 59:	proc  3 (LookupThread:1) promotion_lookup_race.pml:136 (state 6)	[((dm_loc[k]==BLOCK))]
+ 59:	proc  3 (LookupThread:1) promotion_lookup_race.pml:137 (state 7)	[read_refs[k] = (read_refs[k]+1)]
+		read_refs[0] = 0
+		read_refs[1] = 1
+ 59:	proc  3 (LookupThread:1) promotion_lookup_race.pml:138 (state 8)	[cls = BLOCK]
+		read_refs[0] = 0
+		read_refs[1] = 1
+		LookupThread(3):cls = BLOCK
+ 60:	proc  3 (LookupThread:1) promotion_lookup_race.pml:146 (state 12)	[(!(recovering[tid]))]
+ 61:	proc  3 (LookupThread:1) promotion_lookup_race.pml:147 (state 13)	[tier_ssd[tid] = (cls==BLOCK)]
+		tier_ssd[0] = 1
+		tier_ssd[1] = 1
+		tier_ssd[2] = 0
+ 62:	proc  3 (LookupThread:1) promotion_lookup_race.pml:176 (state 27)	[((cls==BLOCK))]
+ 63:	proc  3 (LookupThread:1) promotion_lookup_race.pml:179 (state 28)	[assert((read_refs[k]>0))]
+ 63:	proc  3 (LookupThread:1) promotion_lookup_race.pml:180 (state 29)	[read_refs[k] = (read_refs[k]-1)]
+		read_refs[0] = 0
+		read_refs[1] = 0
+ 63:	proc  3 (LookupThread:1) promotion_lookup_race.pml:186 (state 31)	[won = 0]
+		read_refs[0] = 0
+		read_refs[1] = 0
+		LookupThread(3):won = 0
+ 63:	proc  3 (LookupThread:1) promotion_lookup_race.pml:187 (state 32)	[already = 0]
+		read_refs[0] = 0
+		read_refs[1] = 0
+		LookupThread(3):already = 0
+		LookupThread(3):won = 0
+ 63:	proc  3 (LookupThread:1) promotion_lookup_race.pml:188 (state 33)	[poolfull = 0]
+		read_refs[0] = 0
+		read_refs[1] = 0
+		LookupThread(3):poolfull = 0
+		LookupThread(3):already = 0
+		LookupThread(3):won = 0
+ 64:	proc  3 (LookupThread:1) promotion_lookup_race.pml:202 (state 43)	[((!(mt_alloc[k])&&(mt_pool_used>=1)))]
+ 64:	proc  3 (LookupThread:1) promotion_lookup_race.pml:204 (state 44)	[poolfull = 1]
+		LookupThread(3):poolfull = 1
+ 65:	proc  3 (LookupThread:1) promotion_lookup_race.pml:244 (state 57)	[(poolfull)]
+ 66:	proc  3 (LookupThread:1) promotion_lookup_race.pml:246 (state 58)	[(1)]
+ 67:	proc  3 (LookupThread:1) promotion_lookup_race.pml:127 (state 1)	[((!(finished)&&(attempts<3)))]
+ 67:	proc  3 (LookupThread:1) promotion_lookup_race.pml:128 (state 2)	[attempts = (attempts+1)]
+		LookupThread(3):attempts = 2
+ 68:	proc  3 (LookupThread:1) promotion_lookup_race.pml:136 (state 6)	[((dm_loc[k]==BLOCK))]
+ 68:	proc  3 (LookupThread:1) promotion_lookup_race.pml:137 (state 7)	[read_refs[k] = (read_refs[k]+1)]
+		read_refs[0] = 0
+		read_refs[1] = 1
+ 68:	proc  3 (LookupThread:1) promotion_lookup_race.pml:138 (state 8)	[cls = BLOCK]
+		read_refs[0] = 0
+		read_refs[1] = 1
+		LookupThread(3):cls = BLOCK
+ 69:	proc  3 (LookupThread:1) promotion_lookup_race.pml:146 (state 12)	[(!(recovering[tid]))]
+ 70:	proc  3 (LookupThread:1) promotion_lookup_race.pml:147 (state 13)	[tier_ssd[tid] = (cls==BLOCK)]
+ 71:	proc  3 (LookupThread:1) promotion_lookup_race.pml:176 (state 27)	[((cls==BLOCK))]
+ 72:	proc  3 (LookupThread:1) promotion_lookup_race.pml:179 (state 28)	[assert((read_refs[k]>0))]
+ 72:	proc  3 (LookupThread:1) promotion_lookup_race.pml:180 (state 29)	[read_refs[k] = (read_refs[k]-1)]
+		read_refs[0] = 0
+		read_refs[1] = 0
+ 72:	proc  3 (LookupThread:1) promotion_lookup_race.pml:186 (state 31)	[won = 0]
+		read_refs[0] = 0
+		read_refs[1] = 0
+		LookupThread(3):won = 0
+ 72:	proc  3 (LookupThread:1) promotion_lookup_race.pml:187 (state 32)	[already = 0]
+		read_refs[0] = 0
+		read_refs[1] = 0
+		LookupThread(3):already = 0
+		LookupThread(3):won = 0
+ 72:	proc  3 (LookupThread:1) promotion_lookup_race.pml:188 (state 33)	[poolfull = 0]
+		read_refs[0] = 0
+		read_refs[1] = 0
+		LookupThread(3):poolfull = 0
+		LookupThread(3):already = 0
+		LookupThread(3):won = 0
+ 73:	proc  3 (LookupThread:1) promotion_lookup_race.pml:202 (state 43)	[((!(mt_alloc[k])&&(mt_pool_used>=1)))]
+ 73:	proc  3 (LookupThread:1) promotion_lookup_race.pml:204 (state 44)	[poolfull = 1]
+		LookupThread(3):poolfull = 1
+ 74:	proc  3 (LookupThread:1) promotion_lookup_race.pml:244 (state 57)	[(poolfull)]
+ 75:	proc  3 (LookupThread:1) promotion_lookup_race.pml:246 (state 58)	[(1)]
+ 76:	proc  3 (LookupThread:1) promotion_lookup_race.pml:127 (state 1)	[((!(finished)&&(attempts<3)))]
+ 76:	proc  3 (LookupThread:1) promotion_lookup_race.pml:128 (state 2)	[attempts = (attempts+1)]
+		LookupThread(3):attempts = 3
+ 77:	proc  3 (LookupThread:1) promotion_lookup_race.pml:136 (state 6)	[((dm_loc[k]==BLOCK))]
+ 77:	proc  3 (LookupThread:1) promotion_lookup_race.pml:137 (state 7)	[read_refs[k] = (read_refs[k]+1)]
+		read_refs[0] = 0
+		read_refs[1] = 1
+ 77:	proc  3 (LookupThread:1) promotion_lookup_race.pml:138 (state 8)	[cls = BLOCK]
+		read_refs[0] = 0
+		read_refs[1] = 1
+		LookupThread(3):cls = BLOCK
+ 78:	proc  3 (LookupThread:1) promotion_lookup_race.pml:146 (state 12)	[(!(recovering[tid]))]
+ 79:	proc  3 (LookupThread:1) promotion_lookup_race.pml:147 (state 13)	[tier_ssd[tid] = (cls==BLOCK)]
+ 80:	proc  3 (LookupThread:1) promotion_lookup_race.pml:176 (state 27)	[((cls==BLOCK))]
+ 81:	proc  3 (LookupThread:1) promotion_lookup_race.pml:179 (state 28)	[assert((read_refs[k]>0))]
+ 81:	proc  3 (LookupThread:1) promotion_lookup_race.pml:180 (state 29)	[read_refs[k] = (read_refs[k]-1)]
+		read_refs[0] = 0
+		read_refs[1] = 0
+ 81:	proc  3 (LookupThread:1) promotion_lookup_race.pml:186 (state 31)	[won = 0]
+		read_refs[0] = 0
+		read_refs[1] = 0
+		LookupThread(3):won = 0
+ 81:	proc  3 (LookupThread:1) promotion_lookup_race.pml:187 (state 32)	[already = 0]
+		read_refs[0] = 0
+		read_refs[1] = 0
+		LookupThread(3):already = 0
+		LookupThread(3):won = 0
+ 81:	proc  3 (LookupThread:1) promotion_lookup_race.pml:188 (state 33)	[poolfull = 0]
+		read_refs[0] = 0
+		read_refs[1] = 0
+		LookupThread(3):poolfull = 0
+		LookupThread(3):already = 0
+		LookupThread(3):won = 0
+ 82:	proc  3 (LookupThread:1) promotion_lookup_race.pml:202 (state 43)	[((!(mt_alloc[k])&&(mt_pool_used>=1)))]
+ 82:	proc  3 (LookupThread:1) promotion_lookup_race.pml:204 (state 44)	[poolfull = 1]
+		LookupThread(3):poolfull = 1
+ 83:	proc  3 (LookupThread:1) promotion_lookup_race.pml:244 (state 57)	[(poolfull)]
+ 84:	proc  3 (LookupThread:1) promotion_lookup_race.pml:246 (state 58)	[(1)]
+ 85:	proc  3 (LookupThread:1) promotion_lookup_race.pml:250 (state 63)	[((finished||(attempts>=3)))]
+ 86:	proc  3 (LookupThread:1) promotion_lookup_race.pml:254 (state 68)	[threads_done = (threads_done+1)]
+		threads_done = 1
+ 87: proc 3 terminates
+ 88:	proc  1 (Evictor:1) promotion_lookup_race.pml:270 (state 1)	[(!(shutdown))]
+ 89:	proc  0 (:init::1) promotion_lookup_race.pml:331 (state 18)	[tier_ssd[t] = 0]
+ 90:	proc  1 (Evictor:1) promotion_lookup_race.pml:272 (state 2)	[v = 0]
+		Evictor(1):v = 0
+ 90:	proc  1 (Evictor:1) promotion_lookup_race.pml:273 (state 3)	[found = 0]
+		Evictor(1):found = 0
+		Evictor(1):v = 0
+ 91:	proc  1 (Evictor:1) promotion_lookup_race.pml:275 (state 4)	[((v<2))]
+ 92:	proc  1 (Evictor:1) promotion_lookup_race.pml:281 (state 8)	[else]
+ 93:	proc  1 (Evictor:1) promotion_lookup_race.pml:282 (state 9)	[v = (v+1)]
+		Evictor(1):v = 1
+ 94:	proc  1 (Evictor:1) promotion_lookup_race.pml:275 (state 4)	[((v<2))]
+ 95:	proc  1 (Evictor:1) promotion_lookup_race.pml:281 (state 8)	[else]
+ 96:	proc  1 (Evictor:1) promotion_lookup_race.pml:282 (state 9)	[v = (v+1)]
+		Evictor(1):v = 2
+ 97:	proc  1 (Evictor:1) promotion_lookup_race.pml:284 (state 12)	[((v>=2))]
+ 98:	proc  1 (Evictor:1) promotion_lookup_race.pml:296 (state 24)	[else]
+ 99:	proc  1 (Evictor:1) promotion_lookup_race.pml:297 (state 25)	[(1)]
+100:	proc  0 (:init::1) promotion_lookup_race.pml:332 (state 19)	[recovering[t] = 0]
+Starting LookupThread with pid 3
+101:	proc  0 (:init::1) promotion_lookup_race.pml:333 (state 20)	[(run LookupThread(t))]
+102:	proc  3 (LookupThread:1) promotion_lookup_race.pml:127 (state 1)	[((!(finished)&&(attempts<3)))]
+102:	proc  3 (LookupThread:1) promotion_lookup_race.pml:128 (state 2)	[attempts = (attempts+1)]
+		LookupThread(3):attempts = 1
+103:	proc  0 (:init::1) promotion_lookup_race.pml:334 (state 21)	[t = (t+1)]
+		:init:(0):t = 3
+104:	proc  0 (:init::1) promotion_lookup_race.pml:335 (state 22)	[((t>=3))]
+105:	proc  3 (LookupThread:1) promotion_lookup_race.pml:136 (state 6)	[((dm_loc[k]==BLOCK))]
+105:	proc  3 (LookupThread:1) promotion_lookup_race.pml:137 (state 7)	[read_refs[k] = (read_refs[k]+1)]
+		read_refs[0] = 1
+		read_refs[1] = 0
+105:	proc  3 (LookupThread:1) promotion_lookup_race.pml:138 (state 8)	[cls = BLOCK]
+		read_refs[0] = 1
+		read_refs[1] = 0
+		LookupThread(3):cls = BLOCK
+106:	proc  3 (LookupThread:1) promotion_lookup_race.pml:146 (state 12)	[(!(recovering[tid]))]
+107:	proc  3 (LookupThread:1) promotion_lookup_race.pml:147 (state 13)	[tier_ssd[tid] = (cls==BLOCK)]
+		tier_ssd[0] = 1
+		tier_ssd[1] = 1
+		tier_ssd[2] = 1
+108:	proc  3 (LookupThread:1) promotion_lookup_race.pml:176 (state 27)	[((cls==BLOCK))]
+109:	proc  3 (LookupThread:1) promotion_lookup_race.pml:179 (state 28)	[assert((read_refs[k]>0))]
+109:	proc  3 (LookupThread:1) promotion_lookup_race.pml:180 (state 29)	[read_refs[k] = (read_refs[k]-1)]
+		read_refs[0] = 0
+		read_refs[1] = 0
+109:	proc  3 (LookupThread:1) promotion_lookup_race.pml:186 (state 31)	[won = 0]
+		read_refs[0] = 0
+		read_refs[1] = 0
+		LookupThread(3):won = 0
+109:	proc  3 (LookupThread:1) promotion_lookup_race.pml:187 (state 32)	[already = 0]
+		read_refs[0] = 0
+		read_refs[1] = 0
+		LookupThread(3):already = 0
+		LookupThread(3):won = 0
+109:	proc  3 (LookupThread:1) promotion_lookup_race.pml:188 (state 33)	[poolfull = 0]
+		read_refs[0] = 0
+		read_refs[1] = 0
+		LookupThread(3):poolfull = 0
+		LookupThread(3):already = 0
+		LookupThread(3):won = 0
+110:	proc  3 (LookupThread:1) promotion_lookup_race.pml:199 (state 41)	[(mt_alloc[k])]
+110:	proc  3 (LookupThread:1) promotion_lookup_race.pml:201 (state 42)	[already = 1]
+		LookupThread(3):already = 1
+111:	proc  3 (LookupThread:1) promotion_lookup_race.pml:233 (state 54)	[(already)]
+112:	proc  3 (LookupThread:1) promotion_lookup_race.pml:241 (state 55)	[recovering[tid] = 1]
+		recovering[0] = 0
+		recovering[1] = 0
+		recovering[2] = 1
+113:	proc  3 (LookupThread:1) promotion_lookup_race.pml:242 (state 56)	[(1)]
+114:	proc  3 (LookupThread:1) promotion_lookup_race.pml:127 (state 1)	[((!(finished)&&(attempts<3)))]
+114:	proc  3 (LookupThread:1) promotion_lookup_race.pml:128 (state 2)	[attempts = (attempts+1)]
+		LookupThread(3):attempts = 2
+115:	proc  3 (LookupThread:1) promotion_lookup_race.pml:136 (state 6)	[((dm_loc[k]==BLOCK))]
+115:	proc  3 (LookupThread:1) promotion_lookup_race.pml:137 (state 7)	[read_refs[k] = (read_refs[k]+1)]
+		read_refs[0] = 1
+		read_refs[1] = 0
+115:	proc  3 (LookupThread:1) promotion_lookup_race.pml:138 (state 8)	[cls = BLOCK]
+		read_refs[0] = 1
+		read_refs[1] = 0
+		LookupThread(3):cls = BLOCK
+116:	proc  3 (LookupThread:1) promotion_lookup_race.pml:148 (state 14)	[else]
+117:	proc  3 (LookupThread:1) promotion_lookup_race.pml:149 (state 15)	[(1)]
+118:	proc  3 (LookupThread:1) promotion_lookup_race.pml:176 (state 27)	[((cls==BLOCK))]
+119:	proc  3 (LookupThread:1) promotion_lookup_race.pml:179 (state 28)	[assert((read_refs[k]>0))]
+119:	proc  3 (LookupThread:1) promotion_lookup_race.pml:180 (state 29)	[read_refs[k] = (read_refs[k]-1)]
+		read_refs[0] = 0
+		read_refs[1] = 0
+119:	proc  3 (LookupThread:1) promotion_lookup_race.pml:186 (state 31)	[won = 0]
+		read_refs[0] = 0
+		read_refs[1] = 0
+		LookupThread(3):won = 0
+119:	proc  3 (LookupThread:1) promotion_lookup_race.pml:187 (state 32)	[already = 0]
+		read_refs[0] = 0
+		read_refs[1] = 0
+		LookupThread(3):already = 0
+		LookupThread(3):won = 0
+119:	proc  3 (LookupThread:1) promotion_lookup_race.pml:188 (state 33)	[poolfull = 0]
+		read_refs[0] = 0
+		read_refs[1] = 0
+		LookupThread(3):poolfull = 0
+		LookupThread(3):already = 0
+		LookupThread(3):won = 0
+120:	proc  3 (LookupThread:1) promotion_lookup_race.pml:199 (state 41)	[(mt_alloc[k])]
+120:	proc  3 (LookupThread:1) promotion_lookup_race.pml:201 (state 42)	[already = 1]
+		LookupThread(3):already = 1
+121:	proc  3 (LookupThread:1) promotion_lookup_race.pml:233 (state 54)	[(already)]
+122:	proc  3 (LookupThread:1) promotion_lookup_race.pml:241 (state 55)	[recovering[tid] = 1]
+123:	proc  3 (LookupThread:1) promotion_lookup_race.pml:242 (state 56)	[(1)]
+124:	proc  3 (LookupThread:1) promotion_lookup_race.pml:127 (state 1)	[((!(finished)&&(attempts<3)))]
+124:	proc  3 (LookupThread:1) promotion_lookup_race.pml:128 (state 2)	[attempts = (attempts+1)]
+		LookupThread(3):attempts = 3
+125:	proc  2 (LookupThread:1) promotion_lookup_race.pml:229 (state 51)	[dm_loc[k] = MT]
+		dm_loc[0] = MT
+		dm_loc[1] = BLOCK
+125:	proc  2 (LookupThread:1) promotion_lookup_race.pml:231 (state 53)	[finished = 1]
+		dm_loc[0] = MT
+		dm_loc[1] = BLOCK
+		LookupThread(2):finished = 1
+126:	proc  2 (LookupThread:1) promotion_lookup_race.pml:250 (state 63)	[((finished||(attempts>=3)))]
+127:	proc  3 (LookupThread:1) promotion_lookup_race.pml:133 (state 3)	[((dm_loc[k]==MT))]
+127:	proc  3 (LookupThread:1) promotion_lookup_race.pml:134 (state 4)	[read_refs[k] = (read_refs[k]+1)]
+		read_refs[0] = 1
+		read_refs[1] = 0
+127:	proc  3 (LookupThread:1) promotion_lookup_race.pml:135 (state 5)	[cls = MT]
+		read_refs[0] = 1
+		read_refs[1] = 0
+		LookupThread(3):cls = MT
+128:	proc  3 (LookupThread:1) promotion_lookup_race.pml:148 (state 14)	[else]
+129:	proc  3 (LookupThread:1) promotion_lookup_race.pml:149 (state 15)	[(1)]
+130:	proc  3 (LookupThread:1) promotion_lookup_race.pml:153 (state 18)	[((cls==MT))]
+131:	proc  3 (LookupThread:1) promotion_lookup_race.pml:158 (state 19)	[assert((((dm_loc[k]==MT)&&mt_alloc[k])&&resident[k]))]
+132:	proc  3 (LookupThread:1) promotion_lookup_race.pml:160 (state 20)	[(1)]
+spin: promotion_lookup_race.pml:168, Error: assertion violated
+spin: text of failed assertion: assert(!(tier_ssd[tid]))
+133:	proc  3 (LookupThread:1) promotion_lookup_race.pml:168 (state 21)	[assert(!(tier_ssd[tid]))]
+spin: trail ends after 133 steps
+#processes: 4
+		dm_loc[0] = MT
+		dm_loc[1] = BLOCK
+		read_refs[0] = 1
+		read_refs[1] = 0
+		mt_alloc[0] = 1
+		mt_alloc[1] = 0
+		resident[0] = 1
+		resident[1] = 0
+		mt_pool_used = 1
+		win_count[0] = 1
+		win_count[1] = 0
+		tier_ssd[0] = 1
+		tier_ssd[1] = 1
+		tier_ssd[2] = 1
+		recovering[0] = 0
+		recovering[1] = 0
+		recovering[2] = 1
+		threads_done = 1
+		shutdown = 0
+133:	proc  3 (LookupThread:1) promotion_lookup_race.pml:169 (state 22)
+		LookupThread(3):poolfull = 0
+		LookupThread(3):already = 1
+		LookupThread(3):won = 0
+		LookupThread(3):cls = MT
+		LookupThread(3):finished = 0
+		LookupThread(3):attempts = 3
+		LookupThread(3):k = 0
+		LookupThread(3):tid = 2
+133:	proc  2 (LookupThread:1) promotion_lookup_race.pml:254 (state 68)
+		LookupThread(2):poolfull = 0
+		LookupThread(2):already = 0
+		LookupThread(2):won = 1
+		LookupThread(2):cls = BLOCK
+		LookupThread(2):finished = 1
+		LookupThread(2):attempts = 1
+		LookupThread(2):k = 0
+		LookupThread(2):tid = 0
+133:	proc  1 (Evictor:1) promotion_lookup_race.pml:269 (state 31)
+		Evictor(1):found = 0
+		Evictor(1):v = 2
+133:	proc  0 (:init::1) promotion_lookup_race.pml:340 (state 27)
+		:init:(0):live = 0
+		:init:(0):t = 3
+		:init:(0):k = 2
+5 processes created

@@ -1,0 +1,1797 @@
+diff -ruN '--exclude=*.trail' '--exclude=*.log' '--exclude=*.txt' '--exclude=trails' '--exclude=control' '--exclude=bug2' '--exclude=RESULT.md' orig/populate-lookup-linearizability/populate_lookup_linearizability_control.pml populate-lookup-linearizability/populate_lookup_linearizability_control.pml
+--- orig/populate-lookup-linearizability/populate_lookup_linearizability_control.pml	1969-12-31 16:00:00.000000000 -0800
++++ populate-lookup-linearizability/populate_lookup_linearizability_control.pml	2026-10-17 01:31:39.362879165 -0700
+@@ -0,0 +1,622 @@
++/*
++ * CONTROL COPY of populate_lookup_linearizability.pml (J20). Identical model
++ * with the two minimal code fixes switched on:
++ *   FIX_SYNC_LEAK : populate (lib.rs:3193-3194) releases its reserved
++ *                   memory-tier slot when stream_synchronize fails, exactly as
++ *                   batch_populate already does (lib.rs:3297).
++ *   FIX_COLD_PIN  : lookup_async keeps the dm.lookup read-ref across
++ *                   promote_and_serve (move `dm.release_read(key)` from
++ *                   lib.rs:3064 to after the promote_and_serve call at 3065,
++ *                   on both the Ok and Err paths).
++ * No assert is changed or removed.
++ */
++#define FIX_SYNC_LEAK
++#define FIX_COLD_PIN
++/*
++ * System-level model: Populate-Lookup Linearizability
++ *
++ * Synced (J20) to origin/unstable @ acd24025. Every lib.rs:NNNN below is
++ * components/dispatcher/src/lib.rs at that commit unless another file is named;
++ * dm/lib.rs = components/dispatch-map/src/lib.rs, bg.rs =
++ * components/dispatcher/src/background.rs. All citations were re-derived by
++ * symbol (grep -n) on acd24025, not copied from the previous model.
++ *
++ * Verifies the Certus dispatcher guarantee (strict form):
++ *
++ *   After populate(key) returns Ok AND cached the block, a lookup(key) whose
++ *   dm.lookup happens afterwards NEVER returns KeyNotFound, UNLESS an explicit
++ *   remove(key) removed the dispatch-map entry in between.
++ *
++ * The memory-tier evictor NO LONGER has a drop branch (spec dispatcher 001
++ * FR-024 l.301, commit 1d55b9c2): evict_one_clean (lib.rs:1050-1108) only
++ * demotes (dm.try_evict_to_block, lib.rs:1066) and skips unpersisted victims.
++ * So the only departure path modelled is remove().
++ *
++ * populate's REAL return value is modelled in pop_ret[k]:
++ *   POP_OK_CACHED  lib.rs:3206  Ok(()) after copy_gpu_to_memory_completed
++ *   POP_OK_DROPPED lib.rs:3174  Ok(()) on AllocationFailed (drop-on-full, FR-060)
++ *   POP_ERR_IO     lib.rs:3476-3477 (D2H submit fail) / 3193-3194 (sync fail)
++ * Spec FR-060 (spec 001 l.356-358) and FR-003 (l.280) explicitly allow a lookup
++ * after a drop-on-full Ok to miss. The default build checks the spec contract
++ * (P-LIN excludes POP_OK_DROPPED, P-DROP asserts no entry was left). Build with
++ * -DLITERAL_OK to check the literal "Ok => no miss" contract instead.
++ *
++ * Fix switches (all off here; the sibling *_control.pml turns them on):
++ *   FIX_SYNC_LEAK       populate releases its slot when stream_synchronize
++ *                       fails (as batch_populate already does, lib.rs:3297).
++ *   FIX_COLD_PIN        lookup_async keeps the dm.lookup read-ref across
++ *                       promote_and_serve (move release_read lib.rs:3064 to
++ *                       after 3065), so remove()/SSD-evictor dm.remove refuse
++ *                       the key while a cold promote is reading into its slot.
++ *   FIX_SSD_EVICT_ORDER SSD evictor calls dm.remove before mt.remove and frees
++ *                       the slot only if dm.remove succeeded (bg.rs:328/331).
++ *
++ * Diagnostic switch (not a fix, never in the default build):
++ *   NO_SLOT_CHECK       drops P-CSLOT and the P-FIN orphan-slot assert, only to
++ *                       show that P-LIN/P-PIN/P-WJOB/P-DROP hold on today's
++ *                       code once the slot findings are set aside.
++ *   SSD_EVICTOR         adds the SSD-capacity evictor (bg.rs:279) as a second
++ *                       departure path (spec 001 FR-031). Off by default.
++ *
++ * Wiring modelled:
++ *   populate  lib.rs:3143 -> reserve_memory 3159 (-> evict_and_insert 1176
++ *             -> evict_for_space 1123 -> evict_one_clean 1050; mt.insert 1188)
++ *             -> copy_gpu_to_memory_async 3192 / stream_synchronize 3193
++ *             -> copy_gpu_to_memory_completed 3198:
++ *                  dm.create_memory_tier_entry 3508 (VISIBLE, write_ref=1)
++ *                  dm.downgrade_reference      3552 (write_ref -> writer read_ref)
++ *                  writer.enqueue              3561
++ *             -> Ok(()) 3206
++ *   lookup    lib.rs:2197 -> lookup_async 2994: dm.lookup 3011
++ *             (dm/lib.rs:128; waits <= 2 s for write_ref==0, dm/lib.rs:133,
++ *             Timeout dm/lib.rs:138 -> KeyNotFound lib.rs:3071)
++ *             MemoryTier 3036: serve 3048, release_read 3056, Ok 3061
++ *             BlockDevice 3063: release_read 3064 (UNPINNED from here),
++ *             promote_and_serve 3065 (lib.rs:750: evict_and_insert 768,
++ *             staging fallback 770-787, NVMe+H2D 851-876,
++ *             staged return 884-887, promote_block_to_memory_tier 903-904)
++ *   writer    process_write_job lib.rs:1390: mt.peek 1399, release_read on
++ *             failure 1402/1432/1442/1454, convert_to_storage 1464
++ *             (dm/lib.rs:176, consumes the read-ref)
++ *   evictor   evict_one_clean lib.rs:1050: try_evict_to_block 1066
++ *             (dm/lib.rs:548), mt.remove 1068 (separate step);
++ *             MemoryTierEvictor bg.rs:471: try_evict_to_block bg.rs:531,
++ *             mt.remove bg.rs:535 (same two-step shape)
++ *   ssd-evict BackgroundEvictor::evictor_loop bg.rs:279: dm.oldest_keys 314,
++ *             get_evictable_offset 322 (bg.rs:384: dm.lookup, BlockDevice
++ *             only, release_read 390), mt.remove 328, dm.remove 331,
++ *             remove_extent 348
++ *   remove    lib.rs:3096: dm.lookup 3105 + release_read 3107/3111,
++ *             Err -> KeyNotFound 3114, dm.remove 3119 (dm/lib.rs:334,
++ *             ActiveReferences/KeyNotFound -> KeyNotFound 3120),
++ *             mt.remove 3124, remove_extent 3131, Ok 3135
++ *
++ * Safety properties:
++ *   P-LIN  : lookup -> KeyNotFound (NotExist or Timeout) implies, at the
++ *            dm.lookup instant, populate had not returned Ok-cached, or an
++ *            explicit remove() / SSD-capacity eviction (spec 001 FR-031) had
++ *            removed the entry. (Strict: no memory-tier eviction-drop escape.)
++ *   P-DROP : populate returned Ok-dropped => no dispatch-map entry (FR-060).
++ *   P-PIN  : a MemoryTier hit's entry stays committed, MemoryTier and resident
++ *            while the lookup holds its read-ref.
++ *   P-REF  : dm.remove / try_evict_to_block only succeed at read_refs==0 and
++ *            write_ref==0.
++ *   P-WJOB : a queued write-through job finds its entry committed, resident,
++ *            MemoryTier, this generation, and pinned by the writer's read-ref.
++ *   P-CSLOT: when an (unpinned) cold promote finishes its NVMe->DRAM read, the
++ *            DRAM slot it inserted at lib.rs:768 is still allocated.
++ *   P-RET  : returned labels agree with the state at the returning line.
++ *   P-FIN  : at quiescence: no leaked refs; every memory-tier slot belongs to a
++ *            committed MemoryTier entry (no orphan slot); pool count
++ *            consistent; Ok-cached and never removed => still committed.
++ */
++
++/* ---------- Parameters ---------- */
++#define N_KEYS      2
++#define POOL_CAP    1
++#define N_LOOK      2      /* concurrent Looker processes */
++#define LOOKUPS     1      /* lookups per Looker */
++#define MAX_TRIES   4      /* bounded reserve attempts before AllocationFailed */
++
++/* ---------- Return labels ---------- */
++mtype = { MT, SSD };                                     /* DM location */
++mtype = { POP_NONE, POP_OK_CACHED, POP_OK_DROPPED, POP_ERR_IO };
++mtype = { L_NONE, L_OK_MT, L_OK_SSD_PROMOTED, L_OK_SSD_STAGED, L_KNF_NOTEXIST,
++          L_KNF_TIMEOUT, L_ERR_EXISTS, L_ERR_IO_PROMOTE };
++mtype = { R_NONE, R_OK, R_KNF_TIMEOUT, R_KNF_ABSENT, R_KNF_PINNED };
++
++/* ---------- Per-key state ---------- */
++bool committed[N_KEYS];    /* dispatch-map entry exists */
++mtype location[N_KEYS];    /* MT / SSD (BlockDevice) */
++bool persisted[N_KEYS];    /* ssd_offset set (write-through landed) */
++byte read_refs[N_KEYS];
++bool write_ref[N_KEYS];    /* DM write_ref (create_memory_tier_entry .. downgrade) */
++bool in_pool[N_KEYS];      /* memory-tier holds a slot keyed k */
++byte slot_id[N_KEYS];      /* which allocation the slot keyed k is (for P-CSLOT) */
++byte next_slot = 1;
++byte pool_used = 0;
++byte gen[N_KEYS];
++
++mtype pop_ret[N_KEYS];     /* populate's returned value */
++bool departed[N_KEYS];     /* remove() or SSD evictor: dm.remove succeeded */
++mtype rm_ret = R_NONE;
++
++chan write_q = [N_KEYS] of { byte, byte };
++
++byte pop_done = 0;
++byte look_done = 0;
++bool shutdown = false;
++
++/* mt.insert succeeds: allocate a slot keyed k (memory-tier/src/lib.rs:328). */
++inline mt_alloc(k)
++{
++    in_pool[k] = true;
++    pool_used++;
++    slot_id[k] = next_slot;
++    next_slot = (next_slot % 7) + 1
++}
++
++/* mt.remove(k): frees whatever slot is keyed k (memory-tier/src/lib.rs:483). */
++inline mt_free(k)
++{
++    if
++    :: in_pool[k] -> in_pool[k] = false; pool_used--; slot_id[k] = 0
++    :: else -> skip                       /* KeyNotFound, ignored by callers */
++    fi
++}
++
++/* ---------- evict_one_clean: demote-only, two steps ---------- */
++/*
++ * lib.rs:1050-1108. Step 1 = dm.try_evict_to_block (dm/lib.rs:548-580, one DM
++ * lock hold): succeeds only for an unpinned (read_ref==0, write_ref==0)
++ * MemoryTier entry with ssd_offset set; flips it to BlockDevice. Every other
++ * candidate is skipped (ActiveReferences lib.rs:1073 / InvalidState or
++ * KeyNotFound lib.rs:1076) -- NO dm.remove (removed in 1d55b9c2, FR-024).
++ * Step 2 = mt.remove (lib.rs:1068), a separate memory-tier lock hold.
++ * Candidates come from mt.oldest_keys (lib.rs:1057), so only keys with a slot.
++ */
++inline evict_one_clean(freed)
++{
++    byte v;
++    atomic {
++        freed = false;
++        v = 0;
++        do
++        :: (v < N_KEYS) ->
++            if
++            :: (in_pool[v] && committed[v] && location[v] == MT
++                && read_refs[v] == 0 && !write_ref[v] && persisted[v]) ->
++                break
++            :: else -> v++
++            fi
++        :: (v >= N_KEYS) -> break
++        od;
++        if
++        :: (v < N_KEYS) ->
++            assert(read_refs[v] == 0 && !write_ref[v]);     /* P-REF */
++            location[v] = SSD;
++            freed = true
++        :: else -> skip                     /* record_eviction_scan_exhausted 1106 */
++        fi
++    };
++    if
++    :: freed ->
++        atomic { mt_free(v) }               /* mt.remove(cand) 1068 */
++    :: else -> skip
++    fi
++}
++
++/* ---------- populate lib.rs:3143-3207 ---------- */
++inline do_populate(k)
++{
++    bool reserved = false;
++    byte tries = 0;
++    bool freed;
++
++    /* Phase 1: reserve_memory 3159 -> evict_and_insert -> mt.insert 1188. */
++    do
++    :: !reserved ->
++        atomic {
++            /* mt.insert AlreadyExists (1208-1217) is unreachable here: one
++             * Populator per key, and no other path inserts k before k is
++             * committed. Listed under "Left out" in the README. */
++            if
++            :: (!in_pool[k] && pool_used < POOL_CAP) ->
++                mt_alloc(k);                 /* slot only; no DM entry yet */
++                reserved = true
++            :: else -> skip
++            fi
++        };
++        if
++        :: reserved -> skip
++        :: !reserved ->
++            evict_one_clean(freed);
++            if
++            :: freed -> skip
++            :: !freed ->
++                tries++;
++                if
++                :: (tries >= MAX_TRIES) -> break   /* AllocationFailed 1149/1161 */
++                :: else -> skip                    /* backpressure retry 3415 */
++                fi
++            fi
++        fi
++    :: reserved -> break
++    od;
++
++    if
++    :: !reserved ->
++        /* lib.rs:3161-3174: drop-on-full, returns Ok(()) without caching. */
++        pop_ret[k] = POP_OK_DROPPED;
++        assert(!committed[k])                       /* P-DROP (FR-060) */
++    :: reserved ->
++        /* Phase 2: D2H copy 3192 + stream_synchronize 3193. */
++        if
++        :: true ->
++            skip                                    /* DMA lands */
++        :: true ->
++            /* memcpy_d2h_async fails: mt.remove 3476, IoError 3477 */
++            atomic { mt_free(k); pop_ret[k] = POP_ERR_IO;
++                     assert(!committed[k] && !in_pool[k]) };        /* P-RET */
++            goto pop_end
++        :: true ->
++            /* stream_synchronize fails 3193-3194: IoError via `?`. */
++            atomic {
++#ifdef FIX_SYNC_LEAK
++                mt_free(k);
++#endif
++                pop_ret[k] = POP_ERR_IO;
++                assert(!committed[k])                           /* P-RET */
++            };
++            goto pop_end
++        fi;
++
++        /* Phase 3a: dm.create_memory_tier_entry 3508 (dm/lib.rs:393-439):
++         * entry VISIBLE with write_ref=1. */
++        atomic {
++            assert(!committed[k]);
++            committed[k] = true;
++            location[k] = MT;
++            persisted[k] = false;
++            write_ref[k] = true;
++            gen[k]++
++        };
++        /* Phase 3b: downgrade_reference 3552 (dm/lib.rs:307) + enqueue 3561
++         * + return Ok 3568/3206. Merged: nothing between them changes DM
++         * visibility, and setting pop_ret here is no later than the real
++         * return (stricter for P-LIN). */
++        atomic {
++            write_ref[k] = false;
++            read_refs[k]++;
++            write_q ! k, gen[k];
++            pop_ret[k] = POP_OK_CACHED
++        }
++    fi;
++pop_end:
++    pop_done++
++}
++
++proctype Populator(byte k)
++{
++    do_populate(k)
++}
++
++/* ---------- Background writer: process_write_job lib.rs:1390-1466 ---------- */
++proctype BgWriter()
++{
++    byte jk, jg;
++    do
++    :: write_q ? jk, jg ->
++        atomic {
++            /* P-WJOB */
++            assert(committed[jk] && gen[jk] == jg && location[jk] == MT);
++            assert(in_pool[jk] && read_refs[jk] > 0);
++            if
++            :: true -> persisted[jk] = true    /* convert_to_storage 1464 */
++            :: true -> skip                    /* reserve/write fail 1442/1454 */
++            fi;
++            read_refs[jk]--
++        }
++    :: (shutdown && empty(write_q)) -> break
++    od
++}
++
++/* ---------- MemoryTierEvictor bg.rs:471 / populate-side evict ---------- */
++proctype Evictor()
++{
++    bool freed;
++    do
++    :: !shutdown -> evict_one_clean(freed)
++    :: shutdown -> break
++    od
++}
++
++/* ---------- SSD-capacity evictor bg.rs:279-370 (one candidate) ---------- */
++/* Optional (-DSSD_EVICTOR): off in the default build, which keeps the
++ * strict "only remove() departs" form of P-LIN that the task specifies. */
++#ifdef SSD_EVICTOR
++proctype SsdEvictor()
++{
++    byte k;
++    select(k : 0 .. N_KEYS - 1);           /* dm.oldest_keys bg.rs:314 */
++
++    /* get_evictable_offset bg.rs:322 -> bg.rs:384-404: dm.lookup; only a
++     * BlockDevice entry yields Some(offset); pin released at bg.rs:390.
++     * Timeout / NotExist / MemoryTier -> None -> continue (bg.rs:324). */
++    atomic {
++        if
++        :: (committed[k] && !write_ref[k] && location[k] == SSD) -> skip
++        :: else -> goto ssd_end
++        fi
++    };
++#ifndef FIX_SSD_EVICT_ORDER
++    /* mt.remove(key) bg.rs:328 -- BEFORE dm.remove, unconditionally. */
++    atomic { mt_free(k) };
++#endif
++    /* dm.remove(key) bg.rs:331 (dm/lib.rs:334): no location check. */
++    atomic {
++        if
++        :: (committed[k] && read_refs[k] == 0 && !write_ref[k]) ->
++            assert(read_refs[k] == 0 && !write_ref[k]);        /* P-REF */
++            committed[k] = false;
++            departed[k] = true;
++#ifdef FIX_SSD_EVICT_ORDER
++            mt_free(k);
++#endif
++            skip
++        :: else -> skip                     /* is_err -> continue bg.rs:332 */
++        fi
++    };
++    /* remove_extent bg.rs:348: extents not modelled (Left out). */
++ssd_end:
++    skip
++}
++#endif
++
++/* ---------- remove lib.rs:3096-3136 (non-atomic, 3 steps) ---------- */
++proctype Remover()
++{
++    byte k;
++    select(k : 0 .. N_KEYS - 1);
++
++    /* Step 1: dm.lookup 3105 + release_read 3107/3111 (merged; remove's own
++     * transient pin only makes others' refusals more likely). Blocking wait
++     * for write_ref==0, or Timeout (over-approximated as in Looker). */
++    if
++    :: atomic { (!committed[k] || !write_ref[k]) -> skip }   /* NotExist / hit */
++    :: atomic { (committed[k] && write_ref[k]) ->
++            rm_ret = R_KNF_TIMEOUT;         /* Err(Timeout) -> KeyNotFound 3114 */
++            assert(committed[k] && write_ref[k]) }             /* P-RET */
++            ;
++            goto rm_end
++    fi;
++    /* Step 2: dm.remove 3119 (dm/lib.rs:334-357). */
++    atomic {
++        if
++        :: !committed[k] ->
++            rm_ret = R_KNF_ABSENT;          /* KeyNotFound -> KeyNotFound 3120 */
++            assert(!committed[k]);                              /* P-RET */
++            goto rm_end
++        :: (committed[k] && (read_refs[k] > 0 || write_ref[k])) ->
++            rm_ret = R_KNF_PINNED;          /* ActiveReferences -> KeyNotFound 3120 */
++            assert(read_refs[k] > 0 || write_ref[k]);           /* P-RET */
++            goto rm_end
++        :: (committed[k] && read_refs[k] == 0 && !write_ref[k]) ->
++            assert(read_refs[k] == 0 && !write_ref[k]);        /* P-REF */
++            committed[k] = false;
++            departed[k] = true
++        fi
++    };
++    /* Step 3: mt.remove(key) 3124 -- frees whatever slot is keyed k NOW. */
++    atomic {
++        mt_free(k);
++        /* remove_extent 3131: extents not modelled (Left out). */
++        rm_ret = R_OK;                      /* Ok(()) 3135 */
++        assert(departed[k])                                     /* P-RET */
++    };
++rm_end:
++    skip
++}
++
++/* ---------- lookup / lookup_async lib.rs:2994-3073 ---------- */
++proctype Looker()
++{
++    byte n = 0;
++    byte k;
++    mtype res;
++    mtype ret;
++    bool saw_pop_ok;
++    bool saw_departed;
++    bool mine;
++    bool freed;
++    byte my_slot;
++
++    do
++    :: (n < LOOKUPS) ->
++        n++;
++        ret = L_NONE;
++        select(k : 0 .. N_KEYS - 1);
++
++        /* dm.lookup 3011 -> dm/lib.rs:128-174. Linearization point.
++         * wait_for (dm/state.rs:54) returns the guard held, so "predicate
++         * satisfied" and the read-ref increment are one atomic step: modelled
++         * as a blocking atomic guard. The Timeout branch (2 s of write_ref,
++         * dm/lib.rs:25,137-139) is an over-approximation: allowed whenever a
++         * write_ref is held at all. */
++        if
++        :: atomic { (!committed[k] || !write_ref[k]) ->
++#ifdef LITERAL_OK
++            saw_pop_ok = (pop_ret[k] == POP_OK_CACHED || pop_ret[k] == POP_OK_DROPPED);
++#else
++            saw_pop_ok = (pop_ret[k] == POP_OK_CACHED);
++#endif
++            saw_departed = departed[k];
++            if
++            :: !committed[k] ->
++                ret = L_KNF_NOTEXIST                    /* NotExist -> 3029 */
++            :: else ->
++                res = location[k];
++                read_refs[k]++                          /* dm/lib.rs:146-149 */
++            fi
++           }
++        :: atomic { (committed[k] && write_ref[k]) ->
++#ifdef LITERAL_OK
++            saw_pop_ok = (pop_ret[k] == POP_OK_CACHED || pop_ret[k] == POP_OK_DROPPED);
++#else
++            saw_pop_ok = (pop_ret[k] == POP_OK_CACHED);
++#endif
++            saw_departed = departed[k];
++            ret = L_KNF_TIMEOUT                         /* dm 138 Timeout -> 3071 */
++           }
++        fi;
++
++        if
++        :: (ret == L_KNF_NOTEXIST || ret == L_KNF_TIMEOUT) ->
++            /* P-LIN (strict): miss only if not yet Ok-cached, or removed. */
++            assert(!saw_pop_ok || saw_departed)
++        :: (ret == L_NONE && res == MT) ->
++            /* serve_memory_tier_to_gpu 3048 -- pinned. P-PIN. */
++            assert(committed[k] && location[k] == MT && in_pool[k]);
++            atomic {
++                assert(read_refs[k] > 0);
++                read_refs[k]--;                         /* release_read 3056 */
++                ret = L_OK_MT                           /* Ok 3061 */
++            }
++        :: (ret == L_NONE && res == SSD) ->
++#ifndef FIX_COLD_PIN
++            atomic {
++                assert(read_refs[k] > 0);
++                read_refs[k]--                          /* release_read 3064 */
++            };
++#endif
++            /* promote_and_serve 3065 (lib.rs:750), entry now UNPINNED. */
++            mine = false;
++            atomic {
++                if
++                :: in_pool[k] ->
++                    ret = L_ERR_EXISTS;                 /* mt.insert AlreadyExists 1208-1217, 788 */
++                    assert(in_pool[k])                  /* P-RET */
++                :: (!in_pool[k] && pool_used < POOL_CAP) ->
++                    mt_alloc(k); mine = true; my_slot = slot_id[k]   /* 768 Ok */
++                :: (!in_pool[k] && pool_used >= POOL_CAP) ->
++                    skip                                /* evict_for_space needed */
++                fi
++            };
++            if
++            :: (ret == L_NONE && !mine) ->
++                evict_one_clean(freed);                 /* evict_for_space 1146 */
++                atomic {
++                    if
++                    :: (freed && in_pool[k]) ->
++                        ret = L_ERR_EXISTS;
++                        assert(in_pool[k])              /* P-RET */
++                    :: (freed && !in_pool[k] && pool_used < POOL_CAP) ->
++                        mt_alloc(k); mine = true; my_slot = slot_id[k]
++                    :: else ->
++                        ret = L_OK_SSD_STAGED;          /* staging lease 770-780 */
++                        assert(!mine)                   /* P-RET: no tier slot */
++                    fi
++                }
++            :: else -> skip
++            fi;
++            if
++            :: (ret == L_ERR_EXISTS) ->
++                skip                                    /* Err(AlreadyExists) 788 */
++            :: (ret == L_OK_SSD_STAGED) ->
++                skip                                    /* NVMe->staging->GPU; Ok 886 */
++            :: (mine) ->
++                /* NVMe -> our DRAM slot -> GPU (851-876): a schedulable gap. */
++                skip;
++                atomic {
++#ifndef NO_SLOT_CHECK
++                    assert(in_pool[k] && slot_id[k] == my_slot);   /* P-CSLOT */
++#endif
++                    if
++                    :: (committed[k] && location[k] == SSD) ->
++                        location[k] = MT;               /* promote_block_to_memory_tier 903 */
++                        ret = L_OK_SSD_PROMOTED;        /* Ok 3067 */
++                        assert(committed[k] && location[k] == MT && in_pool[k])   /* P-RET */
++                    :: else ->
++                        /* KeyNotFound / InvalidState -> IoError 904 via `?`;
++                         * the slot inserted at 768 is NOT removed. */
++                        ret = L_ERR_IO_PROMOTE;
++                        assert(!committed[k] || location[k] != SSD)   /* P-RET */
++                    fi
++                }
++            fi;
++#ifdef FIX_COLD_PIN
++            atomic {
++                assert(read_refs[k] > 0);
++                read_refs[k]--                          /* release_read, moved */
++            };
++#endif
++            skip
++        fi
++    :: (n >= LOOKUPS) -> break
++    od;
++    look_done++
++}
++
++init
++{
++    byte k;
++    byte cnt;
++
++    d_step {
++        k = 0;
++        do
++        :: (k < N_KEYS) ->
++            committed[k] = false; location[k] = MT; persisted[k] = false;
++            read_refs[k] = 0; write_ref[k] = false; in_pool[k] = false;
++            slot_id[k] = 0;
++            gen[k] = 0; pop_ret[k] = POP_NONE; departed[k] = false;
++            k++
++        :: (k >= N_KEYS) -> break
++        od
++    };
++
++    run BgWriter();
++    run Evictor();
++    run Remover();
++#ifdef SSD_EVICTOR
++    run SsdEvictor();
++#endif
++
++    k = 0;
++    do
++    :: (k < N_KEYS) -> run Populator(k); k++
++    :: (k >= N_KEYS) -> break
++    od;
++    k = 0;
++    do
++    :: (k < N_LOOK) -> run Looker(); k++
++    :: (k >= N_LOOK) -> break
++    od;
++
++    (pop_done == N_KEYS && look_done == N_LOOK);
++    shutdown = true;
++    timeout;
++
++    /* P-FIN */
++    d_step {
++        k = 0;
++        cnt = 0;
++        do
++        :: (k < N_KEYS) ->
++            assert(read_refs[k] == 0 && !write_ref[k]);
++            /* every memory-tier slot belongs to a committed MemoryTier entry */
++#ifndef NO_SLOT_CHECK
++            assert(!in_pool[k] || (committed[k] && location[k] == MT));
++#endif
++            /* Ok-cached and never removed => still resolvable */
++            assert(pop_ret[k] != POP_OK_CACHED || committed[k] || departed[k]);
++            if
++            :: in_pool[k] -> cnt++
++            :: else -> skip
++            fi;
++            k++
++        :: (k >= N_KEYS) -> break
++        od;
++        assert(cnt == pool_used)
++    }
++}
+diff -ruN '--exclude=*.trail' '--exclude=*.log' '--exclude=*.txt' '--exclude=trails' '--exclude=control' '--exclude=bug2' '--exclude=RESULT.md' orig/populate-lookup-linearizability/populate_lookup_linearizability.pml populate-lookup-linearizability/populate_lookup_linearizability.pml
+--- orig/populate-lookup-linearizability/populate_lookup_linearizability.pml	2026-10-17 00:05:41.892414220 -0700
++++ populate-lookup-linearizability/populate_lookup_linearizability.pml	2026-10-17 01:31:39.361879174 -0700
+@@ -1,435 +1,608 @@
+ /*
+  * System-level model: Populate-Lookup Linearizability
+  *
+- * Verifies the Certus dispatcher guarantee:
++ * Synced (J20) to origin/unstable @ acd24025. Every lib.rs:NNNN below is
++ * components/dispatcher/src/lib.rs at that commit unless another file is named;
++ * dm/lib.rs = components/dispatch-map/src/lib.rs, bg.rs =
++ * components/dispatcher/src/background.rs. All citations were re-derived by
++ * symbol (grep -n) on acd24025, not copied from the previous model.
+  *
+- *   After populate(key) returns Ok, a concurrent lookup(key) NEVER observes
+- *   KeyNotFound, UNLESS an explicit remove(key) or a memory-tier eviction
+- *   (the "drop" path) has removed the entry from the dispatch-map in between.
++ * Verifies the Certus dispatcher guarantee (strict form):
+  *
+- * Component wiring modeled (as wired in certus-server):
++ *   After populate(key) returns Ok AND cached the block, a lookup(key) whose
++ *   dm.lookup happens afterwards NEVER returns KeyNotFound, UNLESS an explicit
++ *   remove(key) removed the dispatch-map entry in between.
+  *
+- *   client(populate) --> dispatcher.reserve_memory --> memory-tier.insert
+- *                    --> dispatcher.copy_gpu_to_memory_completed
+- *                        --> dispatch-map.create_memory_tier_entry   (VISIBLE here)
+- *                        --> dispatch-map.downgrade_reference         (read-ref for writer)
+- *                        --> bg_writer.enqueue(write-through)
+- *   client(lookup)   --> dispatcher.lookup_async --> dispatch-map.lookup (pins read-ref)
+- *   bg_writer        --> block-device write --> dispatch-map.convert_to_storage
+- *   evictor          --> dispatcher.evict_one_clean
+- *                        --> demote: dispatch-map.convert_to_storage (stays a HIT)
+- *                        --> drop:   dispatch-map.remove             (becomes KeyNotFound)
++ * The memory-tier evictor NO LONGER has a drop branch (spec dispatcher 001
++ * FR-024 l.301, commit 1d55b9c2): evict_one_clean (lib.rs:1050-1108) only
++ * demotes (dm.try_evict_to_block, lib.rs:1066) and skips unpersisted victims.
++ * So the only departure path modelled is remove().
+  *
+- * Key modeling decisions matching the real code (components/dispatcher/src/lib.rs):
+- *   - The linearization point of populate is create_memory_tier_entry
+- *     (lib.rs:3044): the key is inserted into the dispatch-map BEFORE populate
+- *     returns Ok. `mt.insert` (phase 1) only reserves a pinned, write-ref'd slot
+- *     that is NOT yet visible to dispatch-map lookups.
+- *   - downgrade_reference (lib.rs:3088) installs one read-ref held by the
+- *     background writer; it is released when the write-through completes. So a
+- *     freshly-populated entry is pinned and cannot be evicted or removed until
+- *     the writer runs.
+- *   - dm.lookup (lib.rs:3676) increments read_ref for MemoryTier / BlockDevice
+- *     hits (pinning the entry), and returns unpinned for NotExist / MismatchSize.
+- *   - evict_one_clean (lib.rs:920) and remove (lib.rs:3810) reject entries with
+- *     read_refs > 0. Demote (convert_to_storage, lib.rs:3730) is atomic under the
+- *     DM mutex and keeps the entry resolvable (BlockDevice => cold-path promote).
++ * populate's REAL return value is modelled in pop_ret[k]:
++ *   POP_OK_CACHED  lib.rs:3206  Ok(()) after copy_gpu_to_memory_completed
++ *   POP_OK_DROPPED lib.rs:3174  Ok(()) on AllocationFailed (drop-on-full, FR-060)
++ *   POP_ERR_IO     lib.rs:3476-3477 (D2H submit fail) / 3193-3194 (sync fail)
++ * Spec FR-060 (spec 001 l.356-358) and FR-003 (l.280) explicitly allow a lookup
++ * after a drop-on-full Ok to miss. The default build checks the spec contract
++ * (P-LIN excludes POP_OK_DROPPED, P-DROP asserts no entry was left). Build with
++ * -DLITERAL_OK to check the literal "Ok => no miss" contract instead.
+  *
+- * Safety properties verified:
+- *   P-LIN:  A lookup that observes KeyNotFound implies the key was either never
+- *           populated (in this generation) or a remove/eviction-drop departed it.
+- *           (Enforced at the dispatch-map read in Looker.)
+- *   P-PIN:  While a lookup holds its read-ref, the entry stays committed
+- *           (no remove/drop under an in-flight load). (Assert during serve.)
+- *   P-REF:  Removal paths (drop, remove) only fire at read_refs == 0.
+- *   P-WJOB: A queued write-through job always finds its entry still committed,
+- *           resident in the memory-tier, and pinned by the writer's read-ref.
+- *   P-FIN:  At quiescence, every not-committed key has departed or was never
+- *           populated, and no read-refs are leaked.
++ * Fix switches (all off here; the sibling *_control.pml turns them on):
++ *   FIX_SYNC_LEAK       populate releases its slot when stream_synchronize
++ *                       fails (as batch_populate already does, lib.rs:3297).
++ *   FIX_COLD_PIN        lookup_async keeps the dm.lookup read-ref across
++ *                       promote_and_serve (move release_read lib.rs:3064 to
++ *                       after 3065), so remove()/SSD-evictor dm.remove refuse
++ *                       the key while a cold promote is reading into its slot.
++ *   FIX_SSD_EVICT_ORDER SSD evictor calls dm.remove before mt.remove and frees
++ *                       the slot only if dm.remove succeeded (bg.rs:328/331).
+  *
+- * Parameters tuned for full coverage:
+- *   N_KEYS=2, POOL_CAP=1 -> populates contend for the single slot, forcing
+- *   eviction (demote / drop) and exercising every departure path.
++ * Diagnostic switch (not a fix, never in the default build):
++ *   NO_SLOT_CHECK       drops P-CSLOT and the P-FIN orphan-slot assert, only to
++ *                       show that P-LIN/P-PIN/P-WJOB/P-DROP hold on today's
++ *                       code once the slot findings are set aside.
++ *   SSD_EVICTOR         adds the SSD-capacity evictor (bg.rs:279) as a second
++ *                       departure path (spec 001 FR-031). Off by default.
++ *
++ * Wiring modelled:
++ *   populate  lib.rs:3143 -> reserve_memory 3159 (-> evict_and_insert 1176
++ *             -> evict_for_space 1123 -> evict_one_clean 1050; mt.insert 1188)
++ *             -> copy_gpu_to_memory_async 3192 / stream_synchronize 3193
++ *             -> copy_gpu_to_memory_completed 3198:
++ *                  dm.create_memory_tier_entry 3508 (VISIBLE, write_ref=1)
++ *                  dm.downgrade_reference      3552 (write_ref -> writer read_ref)
++ *                  writer.enqueue              3561
++ *             -> Ok(()) 3206
++ *   lookup    lib.rs:2197 -> lookup_async 2994: dm.lookup 3011
++ *             (dm/lib.rs:128; waits <= 2 s for write_ref==0, dm/lib.rs:133,
++ *             Timeout dm/lib.rs:138 -> KeyNotFound lib.rs:3071)
++ *             MemoryTier 3036: serve 3048, release_read 3056, Ok 3061
++ *             BlockDevice 3063: release_read 3064 (UNPINNED from here),
++ *             promote_and_serve 3065 (lib.rs:750: evict_and_insert 768,
++ *             staging fallback 770-787, NVMe+H2D 851-876,
++ *             staged return 884-887, promote_block_to_memory_tier 903-904)
++ *   writer    process_write_job lib.rs:1390: mt.peek 1399, release_read on
++ *             failure 1402/1432/1442/1454, convert_to_storage 1464
++ *             (dm/lib.rs:176, consumes the read-ref)
++ *   evictor   evict_one_clean lib.rs:1050: try_evict_to_block 1066
++ *             (dm/lib.rs:548), mt.remove 1068 (separate step);
++ *             MemoryTierEvictor bg.rs:471: try_evict_to_block bg.rs:531,
++ *             mt.remove bg.rs:535 (same two-step shape)
++ *   ssd-evict BackgroundEvictor::evictor_loop bg.rs:279: dm.oldest_keys 314,
++ *             get_evictable_offset 322 (bg.rs:384: dm.lookup, BlockDevice
++ *             only, release_read 390), mt.remove 328, dm.remove 331,
++ *             remove_extent 348
++ *   remove    lib.rs:3096: dm.lookup 3105 + release_read 3107/3111,
++ *             Err -> KeyNotFound 3114, dm.remove 3119 (dm/lib.rs:334,
++ *             ActiveReferences/KeyNotFound -> KeyNotFound 3120),
++ *             mt.remove 3124, remove_extent 3131, Ok 3135
++ *
++ * Safety properties:
++ *   P-LIN  : lookup -> KeyNotFound (NotExist or Timeout) implies, at the
++ *            dm.lookup instant, populate had not returned Ok-cached, or an
++ *            explicit remove() / SSD-capacity eviction (spec 001 FR-031) had
++ *            removed the entry. (Strict: no memory-tier eviction-drop escape.)
++ *   P-DROP : populate returned Ok-dropped => no dispatch-map entry (FR-060).
++ *   P-PIN  : a MemoryTier hit's entry stays committed, MemoryTier and resident
++ *            while the lookup holds its read-ref.
++ *   P-REF  : dm.remove / try_evict_to_block only succeed at read_refs==0 and
++ *            write_ref==0.
++ *   P-WJOB : a queued write-through job finds its entry committed, resident,
++ *            MemoryTier, this generation, and pinned by the writer's read-ref.
++ *   P-CSLOT: when an (unpinned) cold promote finishes its NVMe->DRAM read, the
++ *            DRAM slot it inserted at lib.rs:768 is still allocated.
++ *   P-RET  : returned labels agree with the state at the returning line.
++ *   P-FIN  : at quiescence: no leaked refs; every memory-tier slot belongs to a
++ *            committed MemoryTier entry (no orphan slot); pool count
++ *            consistent; Ok-cached and never removed => still committed.
+  */
+ 
+ /* ---------- Parameters ---------- */
+ #define N_KEYS      2
+ #define POOL_CAP    1
+-#define N_LOOK      2      /* number of concurrent Looker processes */
+-#define LOOKUPS     1      /* lookups performed by each Looker */
+-#define MAX_TRIES   4      /* max_eviction_attempts in reserve_memory */
++#define N_LOOK      2      /* concurrent Looker processes */
++#define LOOKUPS     1      /* lookups per Looker */
++#define MAX_TRIES   4      /* bounded reserve attempts before AllocationFailed */
++
++/* ---------- Return labels ---------- */
++mtype = { MT, SSD };                                     /* DM location */
++mtype = { POP_NONE, POP_OK_CACHED, POP_OK_DROPPED, POP_ERR_IO };
++mtype = { L_NONE, L_OK_MT, L_OK_SSD_PROMOTED, L_OK_SSD_STAGED, L_KNF_NOTEXIST,
++          L_KNF_TIMEOUT, L_ERR_EXISTS, L_ERR_IO_PROMOTE };
++mtype = { R_NONE, R_OK, R_KNF_TIMEOUT, R_KNF_ABSENT, R_KNF_PINNED };
+ 
+ /* ---------- Per-key state ---------- */
+-mtype = { MT, SSD };       /* dispatch-map location when committed */
+-
+-bool committed[N_KEYS];    /* present in dispatch-map (a lookup would HIT) */
+-mtype location[N_KEYS];    /* MT = memory-tier, SSD = block-device (demoted) */
+-bool persisted[N_KEYS];    /* write-through complete (ssd_offset set) */
+-byte read_refs[N_KEYS];    /* dispatch-map read references (pins) */
+-bool write_ref[N_KEYS];    /* exclusive write ref held during populate phase 1-2 */
+-bool in_pool[N_KEYS];      /* occupies a memory-tier pool slot */
++bool committed[N_KEYS];    /* dispatch-map entry exists */
++mtype location[N_KEYS];    /* MT / SSD (BlockDevice) */
++bool persisted[N_KEYS];    /* ssd_offset set (write-through landed) */
++byte read_refs[N_KEYS];
++bool write_ref[N_KEYS];    /* DM write_ref (create_memory_tier_entry .. downgrade) */
++bool in_pool[N_KEYS];      /* memory-tier holds a slot keyed k */
++byte slot_id[N_KEYS];      /* which allocation the slot keyed k is (for P-CSLOT) */
++byte next_slot = 1;
+ byte pool_used = 0;
+-
+-/*
+- * Generation counter per key (incremented on each successful commit). Lets the
+- * background writer detect a stale job after key reuse, mirroring the real
+- * mt.peek generation check.
+- */
+ byte gen[N_KEYS];
+ 
+-/*
+- * pop_ok[k]   : populate(k) has returned Ok for the current generation.
+- * departed[k] : a remove/eviction-drop has removed k from the dispatch-map
+- *               since it was last committed. Reset when k is re-committed.
+- * Together they let Looker distinguish a legitimate miss (never populated, or
+- * departed) from a linearizability violation (visible-then-vanished).
+- */
+-bool pop_ok[N_KEYS];
+-bool departed[N_KEYS];
++mtype pop_ret[N_KEYS];     /* populate's returned value */
++bool departed[N_KEYS];     /* remove() or SSD evictor: dm.remove succeeded */
++mtype rm_ret = R_NONE;
+ 
+-/* ---------- Write-through job channel ---------- */
+-/* Carries (key_index, generation). */
+ chan write_q = [N_KEYS] of { byte, byte };
+ 
+-/* ---------- Coordination ---------- */
+ byte pop_done = 0;
+ byte look_done = 0;
+ bool shutdown = false;
+ 
+-/* ---------- Eviction: free one pin-safe victim ---------- */
++/* mt.insert succeeds: allocate a slot keyed k (memory-tier/src/lib.rs:328). */
++inline mt_alloc(k)
++{
++    in_pool[k] = true;
++    pool_used++;
++    slot_id[k] = next_slot;
++    next_slot = (next_slot % 7) + 1
++}
++
++/* mt.remove(k): frees whatever slot is keyed k (memory-tier/src/lib.rs:483). */
++inline mt_free(k)
++{
++    if
++    :: in_pool[k] -> in_pool[k] = false; pool_used--; slot_id[k] = 0
++    :: else -> skip                       /* KeyNotFound, ignored by callers */
++    fi
++}
++
++/* ---------- evict_one_clean: demote-only, two steps ---------- */
+ /*
+- * Models dispatcher::evict_one_clean. Scans for a committed, pool-resident,
+- * unpinned victim. Preference: demote to SSD if persisted (keeps it a HIT);
+- * otherwise drop it (becomes KeyNotFound). Pinned/unpersisted-and-write-ref'd
+- * entries are skipped, never blind-freed. `freed` reports whether a slot was
+- * reclaimed. The scan-and-act is atomic (real code holds the MT/DM locks).
++ * lib.rs:1050-1108. Step 1 = dm.try_evict_to_block (dm/lib.rs:548-580, one DM
++ * lock hold): succeeds only for an unpinned (read_ref==0, write_ref==0)
++ * MemoryTier entry with ssd_offset set; flips it to BlockDevice. Every other
++ * candidate is skipped (ActiveReferences lib.rs:1073 / InvalidState or
++ * KeyNotFound lib.rs:1076) -- NO dm.remove (removed in 1d55b9c2, FR-024).
++ * Step 2 = mt.remove (lib.rs:1068), a separate memory-tier lock hold.
++ * Candidates come from mt.oldest_keys (lib.rs:1057), so only keys with a slot.
+  */
+ inline evict_one_clean(freed)
+ {
+     byte v;
+-    freed = false;
+     atomic {
++        freed = false;
+         v = 0;
+         do
+         :: (v < N_KEYS) ->
+             if
+-            :: (committed[v] && in_pool[v] && read_refs[v] == 0 && !write_ref[v]) ->
++            :: (in_pool[v] && committed[v] && location[v] == MT
++                && read_refs[v] == 0 && !write_ref[v] && persisted[v]) ->
+                 break
+-            :: else ->
+-                v++
++            :: else -> v++
+             fi
+-        :: (v >= N_KEYS) ->
+-            break
++        :: (v >= N_KEYS) -> break
+         od;
+-
+         if
+-        :: (v < N_KEYS && committed[v] && in_pool[v]
+-            && read_refs[v] == 0 && !write_ref[v]) ->
+-            if
+-            :: persisted[v] ->
+-                /* Demote: convert_to_storage. Entry stays resolvable. */
+-                location[v] = SSD;
+-                in_pool[v] = false;
+-                pool_used--;
+-                freed = true
+-            :: else ->
+-                /* Drop: dm.remove. Write-through not done => block is lost. */
+-                assert(read_refs[v] == 0);        /* P-REF */
+-                committed[v] = false;
+-                departed[v] = true;
+-                in_pool[v] = false;
+-                pool_used--;
+-                freed = true
+-            fi
+-        :: else ->
+-            skip
++        :: (v < N_KEYS) ->
++            assert(read_refs[v] == 0 && !write_ref[v]);     /* P-REF */
++            location[v] = SSD;
++            freed = true
++        :: else -> skip                     /* record_eviction_scan_exhausted 1106 */
+         fi
+-    }
++    };
++    if
++    :: freed ->
++        atomic { mt_free(v) }               /* mt.remove(cand) 1068 */
++    :: else -> skip
++    fi
+ }
+ 
+-/* ---------- Populate: reserve -> DMA -> commit -> enqueue ---------- */
++/* ---------- populate lib.rs:3143-3207 ---------- */
+ inline do_populate(k)
+ {
+     bool reserved = false;
+     byte tries = 0;
+     bool freed;
+ 
+-    /* Phase 1: reserve a memory-tier slot (mt.insert), evicting under pressure. */
++    /* Phase 1: reserve_memory 3159 -> evict_and_insert -> mt.insert 1188. */
+     do
+     :: !reserved ->
+         atomic {
++            /* mt.insert AlreadyExists (1208-1217) is unreachable here: one
++             * Populator per key, and no other path inserts k before k is
++             * committed. Listed under "Left out" in the README. */
+             if
+-            :: (!in_pool[k] && !committed[k] && pool_used < POOL_CAP) ->
+-                in_pool[k] = true;
+-                pool_used++;
+-                write_ref[k] = true;         /* exclusive, not yet in dispatch-map */
++            :: (!in_pool[k] && pool_used < POOL_CAP) ->
++                mt_alloc(k);                 /* slot only; no DM entry yet */
+                 reserved = true
+-            :: else ->
+-                skip
++            :: else -> skip
+             fi
+         };
+         if
+-        :: reserved ->
+-            skip
++        :: reserved -> skip
+         :: !reserved ->
+-            /* evict_for_space: try to free a pin-safe slot, bounded attempts. */
+             evict_one_clean(freed);
+             if
+-            :: freed ->
+-                skip
++            :: freed -> skip
+             :: !freed ->
+                 tries++;
+                 if
+-                :: (tries >= MAX_TRIES) ->
+-                    break            /* AllocationFailed: populate returns Err */
+-                :: else ->
+-                    skip             /* retry: another proc may free a slot */
++                :: (tries >= MAX_TRIES) -> break   /* AllocationFailed 1149/1161 */
++                :: else -> skip                    /* backpressure retry 3415 */
+                 fi
+             fi
+         fi
+-    :: reserved ->
+-        break
++    :: reserved -> break
+     od;
+ 
+     if
++    :: !reserved ->
++        /* lib.rs:3161-3174: drop-on-full, returns Ok(()) without caching. */
++        pop_ret[k] = POP_OK_DROPPED;
++        assert(!committed[k])                       /* P-DROP (FR-060) */
+     :: reserved ->
+-        /* Phase 2: async DMA copy GPU -> reserved slot (a schedulable point). */
+-        skip;
++        /* Phase 2: D2H copy 3192 + stream_synchronize 3193. */
++        if
++        :: true ->
++            skip                                    /* DMA lands */
++        :: true ->
++            /* memcpy_d2h_async fails: mt.remove 3476, IoError 3477 */
++            atomic { mt_free(k); pop_ret[k] = POP_ERR_IO;
++                     assert(!committed[k] && !in_pool[k]) };        /* P-RET */
++            goto pop_end
++        :: true ->
++            /* stream_synchronize fails 3193-3194: IoError via `?`. */
++            atomic {
++#ifdef FIX_SYNC_LEAK
++                mt_free(k);
++#endif
++                pop_ret[k] = POP_ERR_IO;
++                assert(!committed[k])                           /* P-RET */
++            };
++            goto pop_end
++        fi;
+ 
+-        /*
+-         * Phase 3: create_memory_tier_entry makes the key VISIBLE, then
+-         * downgrade_reference converts the write-ref into a read-ref held by the
+-         * background writer. populate returns Ok immediately after (pop_ok).
+-         * These share the dispatch-map mutex in the real code, so they are one
+-         * atomic step here. Setting pop_ok BEFORE committed would break P-LIN.
+-         */
++        /* Phase 3a: dm.create_memory_tier_entry 3508 (dm/lib.rs:393-439):
++         * entry VISIBLE with write_ref=1. */
+         atomic {
++            assert(!committed[k]);
+             committed[k] = true;
+             location[k] = MT;
+             persisted[k] = false;
+-            departed[k] = false;
+-            gen[k]++;
+-            write_ref[k] = false;            /* downgrade_reference */
+-            read_refs[k]++;                  /* writer's read-ref */
+-            pop_ok[k] = true;                /* populate returned Ok */
++            write_ref[k] = true;
++            gen[k]++
+         };
+-
+-        /* bg_writer.enqueue — separate step so lookups can interleave. */
+-        write_q ! k, gen[k]
+-    :: !reserved ->
+-        skip                                 /* populate failed; P-LIN N/A */
++        /* Phase 3b: downgrade_reference 3552 (dm/lib.rs:307) + enqueue 3561
++         * + return Ok 3568/3206. Merged: nothing between them changes DM
++         * visibility, and setting pop_ret here is no later than the real
++         * return (stricter for P-LIN). */
++        atomic {
++            write_ref[k] = false;
++            read_refs[k]++;
++            write_q ! k, gen[k];
++            pop_ret[k] = POP_OK_CACHED
++        }
+     fi;
+-
++pop_end:
+     pop_done++
+ }
+ 
+-/* ---------- Populator process (one per key) ---------- */
+ proctype Populator(byte k)
+ {
+     do_populate(k)
+ }
+ 
+-/* ---------- Background writer ---------- */
++/* ---------- Background writer: process_write_job lib.rs:1390-1466 ---------- */
+ proctype BgWriter()
+ {
+     byte jk, jg;
+-
+     do
+     :: write_q ? jk, jg ->
+-        /*
+-         * P-WJOB: while the job was queued, the entry could not be evicted or
+-         * removed (the writer's read-ref pins it), so it is still committed,
+-         * resident in the memory-tier, and this generation's.
+-         *
+-         * The write-through either completes (persisted => later evictable by
+-         * demote-to-SSD) or fails (IoError: ref released but persisted stays
+-         * false => the entry is now an unpinned, unpersisted candidate that
+-         * evict_one_clean must DROP rather than demote).
+-         */
+         atomic {
++            /* P-WJOB */
+             assert(committed[jk] && gen[jk] == jg && location[jk] == MT);
+-            assert(read_refs[jk] > 0);
++            assert(in_pool[jk] && read_refs[jk] > 0);
+             if
+-            :: true  -> persisted[jk] = true /* write-through completes */
+-            :: true  -> skip                 /* write-through fails (IoError) */
++            :: true -> persisted[jk] = true    /* convert_to_storage 1464 */
++            :: true -> skip                    /* reserve/write fail 1442/1454 */
+             fi;
+-            read_refs[jk]--                  /* release writer's read-ref */
++            read_refs[jk]--
+         }
+-    :: (shutdown && empty(write_q)) ->
+-        break
++    :: (shutdown && empty(write_q)) -> break
+     od
+ }
+ 
+-/* ---------- Background evictor ---------- */
++/* ---------- MemoryTierEvictor bg.rs:471 / populate-side evict ---------- */
+ proctype Evictor()
+ {
+     bool freed;
+-
+     do
+-    :: !shutdown ->
+-        evict_one_clean(freed)
+-    :: shutdown ->
+-        break
++    :: !shutdown -> evict_one_clean(freed)
++    :: shutdown -> break
+     od
+ }
+ 
+-/* ---------- Explicit remove (one bounded attempt) ---------- */
+-proctype Remover()
++/* ---------- SSD-capacity evictor bg.rs:279-370 (one candidate) ---------- */
++/* Optional (-DSSD_EVICTOR): off in the default build, which keeps the
++ * strict "only remove() departs" form of P-LIN that the task specifies. */
++#ifdef SSD_EVICTOR
++proctype SsdEvictor()
+ {
+     byte k;
++    select(k : 0 .. N_KEYS - 1);           /* dm.oldest_keys bg.rs:314 */
+ 
+-    select(k : 0 .. N_KEYS - 1);
++    /* get_evictable_offset bg.rs:322 -> bg.rs:384-404: dm.lookup; only a
++     * BlockDevice entry yields Some(offset); pin released at bg.rs:390.
++     * Timeout / NotExist / MemoryTier -> None -> continue (bg.rs:324). */
++    atomic {
++        if
++        :: (committed[k] && !write_ref[k] && location[k] == SSD) -> skip
++        :: else -> goto ssd_end
++        fi
++    };
++#ifndef FIX_SSD_EVICT_ORDER
++    /* mt.remove(key) bg.rs:328 -- BEFORE dm.remove, unconditionally. */
++    atomic { mt_free(k) };
++#endif
++    /* dm.remove(key) bg.rs:331 (dm/lib.rs:334): no location check. */
+     atomic {
+         if
+         :: (committed[k] && read_refs[k] == 0 && !write_ref[k]) ->
+-            /* dm.remove succeeds only when unpinned (P-REF). */
+-            assert(read_refs[k] == 0);
++            assert(read_refs[k] == 0 && !write_ref[k]);        /* P-REF */
+             committed[k] = false;
+             departed[k] = true;
+-            if
+-            :: in_pool[k] ->
+-                in_pool[k] = false;
+-                pool_used--
+-            :: else ->
+-                skip
+-            fi
+-        :: else ->
+-            skip                             /* ActiveReferences / KeyNotFound */
++#ifdef FIX_SSD_EVICT_ORDER
++            mt_free(k);
++#endif
++            skip
++        :: else -> skip                     /* is_err -> continue bg.rs:332 */
+         fi
+-    }
++    };
++    /* remove_extent bg.rs:348: extents not modelled (Left out). */
++ssd_end:
++    skip
++}
++#endif
++
++/* ---------- remove lib.rs:3096-3136 (non-atomic, 3 steps) ---------- */
++proctype Remover()
++{
++    byte k;
++    select(k : 0 .. N_KEYS - 1);
++
++    /* Step 1: dm.lookup 3105 + release_read 3107/3111 (merged; remove's own
++     * transient pin only makes others' refusals more likely). Blocking wait
++     * for write_ref==0, or Timeout (over-approximated as in Looker). */
++    if
++    :: atomic { (!committed[k] || !write_ref[k]) -> skip }   /* NotExist / hit */
++    :: atomic { (committed[k] && write_ref[k]) ->
++            rm_ret = R_KNF_TIMEOUT;         /* Err(Timeout) -> KeyNotFound 3114 */
++            assert(committed[k] && write_ref[k]) }             /* P-RET */
++            ;
++            goto rm_end
++    fi;
++    /* Step 2: dm.remove 3119 (dm/lib.rs:334-357). */
++    atomic {
++        if
++        :: !committed[k] ->
++            rm_ret = R_KNF_ABSENT;          /* KeyNotFound -> KeyNotFound 3120 */
++            assert(!committed[k]);                              /* P-RET */
++            goto rm_end
++        :: (committed[k] && (read_refs[k] > 0 || write_ref[k])) ->
++            rm_ret = R_KNF_PINNED;          /* ActiveReferences -> KeyNotFound 3120 */
++            assert(read_refs[k] > 0 || write_ref[k]);           /* P-RET */
++            goto rm_end
++        :: (committed[k] && read_refs[k] == 0 && !write_ref[k]) ->
++            assert(read_refs[k] == 0 && !write_ref[k]);        /* P-REF */
++            committed[k] = false;
++            departed[k] = true
++        fi
++    };
++    /* Step 3: mt.remove(key) 3124 -- frees whatever slot is keyed k NOW. */
++    atomic {
++        mt_free(k);
++        /* remove_extent 3131: extents not modelled (Left out). */
++        rm_ret = R_OK;                      /* Ok(()) 3135 */
++        assert(departed[k])                                     /* P-RET */
++    };
++rm_end:
++    skip
+ }
+ 
+-/* ---------- Looker process (concurrent lookups) ---------- */
++/* ---------- lookup / lookup_async lib.rs:2994-3073 ---------- */
+ proctype Looker()
+ {
+     byte n = 0;
+     byte k;
+-    bool hit;
++    mtype res;
++    mtype ret;
+     bool saw_pop_ok;
+     bool saw_departed;
++    bool mine;
++    bool freed;
++    byte my_slot;
+ 
+     do
+     :: (n < LOOKUPS) ->
+         n++;
++        ret = L_NONE;
+         select(k : 0 .. N_KEYS - 1);
+ 
+-        /*
+-         * dm.lookup — the lookup's linearization point. Snapshot committed,
+-         * pop_ok, and departed together under the dispatch-map mutex: the P-LIN
+-         * check must reason about the state AT this instant, not a later one
+-         * (a miss now is legitimate if populate has not yet returned Ok now,
+-         * even if it commits a moment afterwards). Pin the entry on a hit.
+-         */
+-        atomic {
+-            hit = committed[k];
+-            saw_pop_ok = pop_ok[k];
++        /* dm.lookup 3011 -> dm/lib.rs:128-174. Linearization point.
++         * wait_for (dm/state.rs:54) returns the guard held, so "predicate
++         * satisfied" and the read-ref increment are one atomic step: modelled
++         * as a blocking atomic guard. The Timeout branch (2 s of write_ref,
++         * dm/lib.rs:25,137-139) is an over-approximation: allowed whenever a
++         * write_ref is held at all. */
++        if
++        :: atomic { (!committed[k] || !write_ref[k]) ->
++#ifdef LITERAL_OK
++            saw_pop_ok = (pop_ret[k] == POP_OK_CACHED || pop_ret[k] == POP_OK_DROPPED);
++#else
++            saw_pop_ok = (pop_ret[k] == POP_OK_CACHED);
++#endif
+             saw_departed = departed[k];
+             if
+-            :: committed[k] ->
+-                read_refs[k]++               /* MemoryTier/BlockDevice => pinned */
++            :: !committed[k] ->
++                ret = L_KNF_NOTEXIST                    /* NotExist -> 3029 */
+             :: else ->
+-                skip                         /* NotExist => unpinned */
++                res = location[k];
++                read_refs[k]++                          /* dm/lib.rs:146-149 */
+             fi
+-        };
++           }
++        :: atomic { (committed[k] && write_ref[k]) ->
++#ifdef LITERAL_OK
++            saw_pop_ok = (pop_ret[k] == POP_OK_CACHED || pop_ret[k] == POP_OK_DROPPED);
++#else
++            saw_pop_ok = (pop_ret[k] == POP_OK_CACHED);
++#endif
++            saw_departed = departed[k];
++            ret = L_KNF_TIMEOUT                         /* dm 138 Timeout -> 3071 */
++           }
++        fi;
+ 
+         if
+-        :: !hit ->
+-            /*
+-             * P-LIN: a KeyNotFound is legitimate only if, at the lookup instant,
+-             * the key was never populated in this generation (!saw_pop_ok), or a
+-             * remove/eviction-drop had already departed it (saw_departed). A
+-             * "visible-then-vanished" entry (populated, not departed, yet
+-             * missing) would violate linearizability.
+-             */
++        :: (ret == L_KNF_NOTEXIST || ret == L_KNF_TIMEOUT) ->
++            /* P-LIN (strict): miss only if not yet Ok-cached, or removed. */
+             assert(!saw_pop_ok || saw_departed)
+-        :: hit ->
+-            /*
+-             * Serve phase (H2D DMA / cold-path promote-and-serve). Interleaves
+-             * with everything else. P-PIN: the read-ref we hold forbids any
+-             * remove/drop, so the entry must remain committed throughout.
+-             */
+-            assert(committed[k]);
++        :: (ret == L_NONE && res == MT) ->
++            /* serve_memory_tier_to_gpu 3048 -- pinned. P-PIN. */
++            assert(committed[k] && location[k] == MT && in_pool[k]);
+             atomic {
+                 assert(read_refs[k] > 0);
+-                read_refs[k]--               /* release_read */
++                read_refs[k]--;                         /* release_read 3056 */
++                ret = L_OK_MT                           /* Ok 3061 */
+             }
++        :: (ret == L_NONE && res == SSD) ->
++#ifndef FIX_COLD_PIN
++            atomic {
++                assert(read_refs[k] > 0);
++                read_refs[k]--                          /* release_read 3064 */
++            };
++#endif
++            /* promote_and_serve 3065 (lib.rs:750), entry now UNPINNED. */
++            mine = false;
++            atomic {
++                if
++                :: in_pool[k] ->
++                    ret = L_ERR_EXISTS;                 /* mt.insert AlreadyExists 1208-1217, 788 */
++                    assert(in_pool[k])                  /* P-RET */
++                :: (!in_pool[k] && pool_used < POOL_CAP) ->
++                    mt_alloc(k); mine = true; my_slot = slot_id[k]   /* 768 Ok */
++                :: (!in_pool[k] && pool_used >= POOL_CAP) ->
++                    skip                                /* evict_for_space needed */
++                fi
++            };
++            if
++            :: (ret == L_NONE && !mine) ->
++                evict_one_clean(freed);                 /* evict_for_space 1146 */
++                atomic {
++                    if
++                    :: (freed && in_pool[k]) ->
++                        ret = L_ERR_EXISTS;
++                        assert(in_pool[k])              /* P-RET */
++                    :: (freed && !in_pool[k] && pool_used < POOL_CAP) ->
++                        mt_alloc(k); mine = true; my_slot = slot_id[k]
++                    :: else ->
++                        ret = L_OK_SSD_STAGED;          /* staging lease 770-780 */
++                        assert(!mine)                   /* P-RET: no tier slot */
++                    fi
++                }
++            :: else -> skip
++            fi;
++            if
++            :: (ret == L_ERR_EXISTS) ->
++                skip                                    /* Err(AlreadyExists) 788 */
++            :: (ret == L_OK_SSD_STAGED) ->
++                skip                                    /* NVMe->staging->GPU; Ok 886 */
++            :: (mine) ->
++                /* NVMe -> our DRAM slot -> GPU (851-876): a schedulable gap. */
++                skip;
++                atomic {
++#ifndef NO_SLOT_CHECK
++                    assert(in_pool[k] && slot_id[k] == my_slot);   /* P-CSLOT */
++#endif
++                    if
++                    :: (committed[k] && location[k] == SSD) ->
++                        location[k] = MT;               /* promote_block_to_memory_tier 903 */
++                        ret = L_OK_SSD_PROMOTED;        /* Ok 3067 */
++                        assert(committed[k] && location[k] == MT && in_pool[k])   /* P-RET */
++                    :: else ->
++                        /* KeyNotFound / InvalidState -> IoError 904 via `?`;
++                         * the slot inserted at 768 is NOT removed. */
++                        ret = L_ERR_IO_PROMOTE;
++                        assert(!committed[k] || location[k] != SSD)   /* P-RET */
++                    fi
++                }
++            fi;
++#ifdef FIX_COLD_PIN
++            atomic {
++                assert(read_refs[k] > 0);
++                read_refs[k]--                          /* release_read, moved */
++            };
++#endif
++            skip
+         fi
+-    :: (n >= LOOKUPS) ->
+-        break
++    :: (n >= LOOKUPS) -> break
+     od;
+-
+     look_done++
+ }
+ 
+-/* ---------- Initialization ---------- */
+ init
+ {
+     byte k;
++    byte cnt;
+ 
+     d_step {
+         k = 0;
+         do
+         :: (k < N_KEYS) ->
+-            committed[k] = false;
+-            location[k] = MT;
+-            persisted[k] = false;
+-            read_refs[k] = 0;
+-            write_ref[k] = false;
+-            in_pool[k] = false;
+-            gen[k] = 0;
+-            pop_ok[k] = false;
+-            departed[k] = false;
++            committed[k] = false; location[k] = MT; persisted[k] = false;
++            read_refs[k] = 0; write_ref[k] = false; in_pool[k] = false;
++            slot_id[k] = 0;
++            gen[k] = 0; pop_ret[k] = POP_NONE; departed[k] = false;
+             k++
+-        :: (k >= N_KEYS) ->
+-            break
++        :: (k >= N_KEYS) -> break
+         od
+     };
+ 
+     run BgWriter();
+     run Evictor();
+     run Remover();
++#ifdef SSD_EVICTOR
++    run SsdEvictor();
++#endif
+ 
+-    /* One Populator per key. */
+     k = 0;
+     do
+-    :: (k < N_KEYS) ->
+-        run Populator(k);
+-        k++
+-    :: (k >= N_KEYS) ->
+-        break
++    :: (k < N_KEYS) -> run Populator(k); k++
++    :: (k >= N_KEYS) -> break
+     od;
+-
+-    /* N_LOOK concurrent Lookers. */
+     k = 0;
+     do
+-    :: (k < N_LOOK) ->
+-        run Looker();
+-        k++
+-    :: (k >= N_LOOK) ->
+-        break
++    :: (k < N_LOOK) -> run Looker(); k++
++    :: (k >= N_LOOK) -> break
+     od;
+ 
+-    /* Wait for all populates and lookups to finish. */
+     (pop_done == N_KEYS && look_done == N_LOOK);
+-
+-    /* Signal shutdown and let background processes drain. */
+     shutdown = true;
+     timeout;
+ 
+-    /* Final invariants (P-FIN). */
++    /* P-FIN */
+     d_step {
+         k = 0;
++        cnt = 0;
+         do
+         :: (k < N_KEYS) ->
+-            /* Not committed => departed or never populated. */
+-            assert(committed[k] || departed[k] || !pop_ok[k]);
+-            /* No leaked read-refs at quiescence. */
+-            assert(read_refs[k] == 0);
+-            /* Pool accounting is consistent. */
+-            assert(!in_pool[k] || committed[k]);
++            assert(read_refs[k] == 0 && !write_ref[k]);
++            /* every memory-tier slot belongs to a committed MemoryTier entry */
++#ifndef NO_SLOT_CHECK
++            assert(!in_pool[k] || (committed[k] && location[k] == MT));
++#endif
++            /* Ok-cached and never removed => still resolvable */
++            assert(pop_ret[k] != POP_OK_CACHED || committed[k] || departed[k]);
++            if
++            :: in_pool[k] -> cnt++
++            :: else -> skip
++            fi;
+             k++
+-        :: (k >= N_KEYS) ->
+-            break
+-        od
++        :: (k >= N_KEYS) -> break
++        od;
++        assert(cnt == pool_used)
+     }
+ }
+diff -ruN '--exclude=*.trail' '--exclude=*.log' '--exclude=*.txt' '--exclude=trails' '--exclude=control' '--exclude=bug2' '--exclude=RESULT.md' orig/populate-lookup-linearizability/README.md populate-lookup-linearizability/README.md
+--- orig/populate-lookup-linearizability/README.md	2026-10-17 00:05:41.892414220 -0700
++++ populate-lookup-linearizability/README.md	2026-10-17 01:34:36.724314172 -0700
+@@ -1,111 +1,207 @@
+ # Populate-Lookup Linearizability
+ 
+-**Scope:** Whole system (client → dispatcher → memory-tier / dispatch-map → background writer → block-device eviction)
++**Scope:** Whole system (client → dispatcher → memory-tier / dispatch-map → background writer → memory-tier eviction → explicit remove)
+ 
+-This Spin/Promela model verifies the dispatcher's core visibility contract:
+-
+-> After `populate(key)` returns `Ok`, a concurrent `lookup(key)` never observes
+-> `KeyNotFound`, **unless** an explicit `remove(key)` or a memory-tier eviction
+-> (the "drop" path) has removed the entry from the dispatch-map in between.
+-
+-The interesting concurrency is that `populate` is a **multi-phase, non-atomic**
+-operation (reserve a memory-tier slot → async GPU→DRAM DMA → register in the
+-dispatch-map → enqueue write-through), and it races against concurrent lookups,
+-the background writer, an evictor under pool pressure, and explicit removes. The
+-model pins down the linearization point of `populate` (`create_memory_tier_entry`)
+-and checks that every lookup observation is consistent with it.
++**Synced to:** `origin/unstable` @ `acd24025` (J20). Every file:line below was found again by symbol
++(`grep -n`) in that tree. `lib.rs` = `components/dispatcher/src/lib.rs`, `bg.rs` =
++`components/dispatcher/src/background.rs`, `dm/lib.rs` = `components/dispatch-map/src/lib.rs`,
++`mt/lib.rs` = `components/memory-tier/src/lib.rs`, `spec 001` =
++`components/dispatcher/specs/001-dispatcher-cache-interface/spec.md`.
++
++This Spin/Promela model checks the dispatcher's main visibility contract, in its **strict** form:
++
++> After `populate(key)` returns `Ok` **and the block was cached**, a `lookup(key)` whose `dm.lookup`
++> runs afterwards never returns `KeyNotFound`, **unless** an explicit `remove(key)` removed the
++> dispatch-map entry in between.
++
++The memory-tier evictor no longer has a drop branch. Commit `1d55b9c2` removed `dm.remove` from
++`evict_one_clean` (lib.rs:1050-1108), and spec 001 FR-024 (l.301) now says unpersisted victims
++"MUST NOT be dropped". So, unlike the previous model, P-LIN gives no escape for eviction.
++
++`populate`'s **real** return value is modelled (`pop_ret[k]`). `populate` returns `Ok(())` in two
++cases: after caching the block (lib.rs:3206), and on drop-on-full when the block was **not** cached
++(lib.rs:3161-3174). The spec allows a later miss after a drop-on-full `Ok`:
++
++- spec 001 FR-060 (l.358): "*if `reserve_memory` still returns `AllocationFailed` after
++  backpressure, the store path MUST NOT propagate the error. It skips caching the block and reports
++  success — `populate` returns `Ok(())` … leaving no dispatch-map entry, so a later lookup simply
++  misses and recomputes.*"
++- spec 001 FR-003 (l.280): "*`populate` best-effort **drops** the store — it returns `Ok(())` without
++  caching the block (a later lookup misses and recomputes)*".
++- spec 001 Edge Cases (l.227) and User Story 1 scenario 5 (l.39) say the same.
++
++So the default build checks the spec contract. P-LIN applies only to `POP_OK_CACHED`, and P-DROP
++asserts that a drop-on-full `Ok` leaves no entry. `-DLITERAL_OK` checks the literal reading ("any
++`Ok` ⇒ no later miss") instead. Spin refutes that reading in 0.08 s, which is expected given FR-060.
++Note that the interface doc comment (`interfaces/src/idispatcher.rs:658`) still says populate
++"Returns `AllocationFailed` if the memory-tier pool is full". That is doc drift against FR-060 and
++the code. It is not a model issue.
+ 
+ ## Properties Verified
+ 
+-| ID     | Property                                                                                                  | Type   |
+-|--------|-----------------------------------------------------------------------------------------------------------|--------|
+-| P-LIN  | A lookup observing `KeyNotFound` implies that, *at the lookup instant*, the key was never populated in this generation or a remove/eviction-drop had departed it. | Safety |
+-| P-PIN  | While a lookup holds its read-ref, the entry stays committed — no remove/drop under an in-flight load.     | Safety |
+-| P-REF  | The removal paths (eviction-drop, explicit remove) only fire when `read_refs == 0`.                       | Safety |
+-| P-WJOB | A queued write-through job always finds its entry still committed, resident in the memory-tier, and pinned by the writer's read-ref. | Safety |
+-| P-FIN  | At quiescence, every not-committed key has departed or was never populated, and no read-refs are leaked.  | Safety |
++| ID      | Property | Type |
++|---------|----------|------|
++| P-LIN   | A lookup that returns `KeyNotFound` (dm `NotExist` → lib.rs:3029, or dm `Timeout` → lib.rs:3071) implies that, at the `dm.lookup` instant, populate had not yet returned Ok-cached, or a `remove()` had succeeded. **Strict**: no eviction-drop escape. | Safety |
++| P-DROP  | A populate that returned Ok on drop-on-full (lib.rs:3174) left no dispatch-map entry (FR-060). | Safety |
++| P-PIN   | While a MemoryTier hit holds its read-ref, the entry stays committed, MemoryTier, and resident. | Safety |
++| P-REF   | `dm.remove` (remove()) and `try_evict_to_block` (evictor) succeed only when `read_ref == 0 && write_ref == 0`. | Safety |
++| P-WJOB  | A queued write-through job finds its entry committed, this generation, MemoryTier, resident in the memory-tier, and pinned by the writer's read-ref. | Safety |
++| P-CSLOT | **New.** When a cold `promote_and_serve` finishes its NVMe→DRAM read, the memory-tier slot it inserted at lib.rs:768 is still allocated to it, with the same allocation id. | Safety |
++| P-RET   | **New.** Every returned label (populate, lookup, remove) matches the state at the code line that returns it. | Safety |
++| P-FIN   | At quiescence: no leaked read/write refs. Every memory-tier slot belongs to a committed MemoryTier entry (**new: no orphan slot**). `pool_used` matches. Ok-cached and never removed ⇒ still committed. | Safety |
+ 
+ ## System Abstraction
+ 
+-| Real component / operation                                       | Promela process / construct              |
+-|------------------------------------------------------------------|------------------------------------------|
+-| Client `populate(key)` (dispatcher `reserve_memory` → `copy_gpu_to_memory_completed`) | `Populator` proctype (one per key), `do_populate` inline |
+-| Client `lookup(key)` (dispatcher `lookup_async` → `dm.lookup`)   | `Looker` proctype (`N_LOOK` concurrent)  |
+-| Background write-through worker                                   | `BgWriter` proctype + `write_q` channel  |
+-| Memory-tier eviction (`evict_for_space` / `evict_one_clean`)     | `Evictor` proctype, `evict_one_clean` inline |
+-| Explicit `dispatcher.remove(key)`                                | `Remover` proctype                       |
+-| Dispatch-map entry visibility                                    | `committed[k]`                           |
+-| Entry location (MemoryTier vs BlockDevice)                       | `location[k]` ∈ {`MT`, `SSD`}            |
+-| Write-through complete (`ssd_offset` set)                        | `persisted[k]`                           |
+-| Dispatch-map read/write references                               | `read_refs[k]`, `write_ref[k]`           |
+-| Memory-tier pool occupancy                                       | `in_pool[k]`, `pool_used`, `POOL_CAP`    |
+-| `mt.peek` generation check on writer completion                  | `gen[k]`, job carries `(key, gen)`       |
++| Real component / operation | Promela process / construct |
++|---|---|
++| `populate(key)` lib.rs:3143-3207 | `Populator` (one per key), `do_populate` inline |
++| `lookup` lib.rs:2197 → `lookup_async` lib.rs:2994-3073 (incl. cold `promote_and_serve` lib.rs:750-909) | `Looker` (`N_LOOK` concurrent) |
++| Background writer `process_write_job` lib.rs:1390-1466 | `BgWriter` + `write_q` |
++| `evict_one_clean` lib.rs:1050 (from `evict_for_space`/`evict_and_insert`) and `MemoryTierEvictor::evictor_loop` bg.rs:471 | `Evictor` proctype + `evict_one_clean` inline (called also from `Populator` and the cold path of `Looker`) |
++| `remove(key)` lib.rs:3096-3136 (3 steps, not atomic) | `Remover` |
++| SSD-capacity evictor `BackgroundEvictor::evictor_loop` bg.rs:279 | `SsdEvictor`, **only with `-DSSD_EVICTOR`** (off by default) |
++| Dispatch-map entry exists / location / ssd_offset / refs | `committed[k]`, `location[k]`, `persisted[k]`, `read_refs[k]`, `write_ref[k]` |
++| Memory-tier slot keyed `k` (+ allocation identity) | `in_pool[k]`, `slot_id[k]`, `pool_used`, `POOL_CAP` |
++| `populate` return value | `pop_ret[k]` ∈ {`POP_OK_CACHED`, `POP_OK_DROPPED`, `POP_ERR_IO`} |
++| `lookup` return value | Looker `ret` ∈ {`L_OK_MT`, `L_OK_SSD_PROMOTED`, `L_OK_SSD_STAGED`, `L_KNF_NOTEXIST`, `L_KNF_TIMEOUT`, `L_ERR_EXISTS`, `L_ERR_IO_PROMOTE`} |
++| `remove` return value | `rm_ret` ∈ {`R_OK`, `R_KNF_TIMEOUT`, `R_KNF_ABSENT`, `R_KNF_PINNED`} |
++| Successful `dm.remove` | `departed[k]` |
+ 
+ ## Assumptions / Stubs
+ 
+-- **Linearization point.** `populate` becomes visible at `create_memory_tier_entry`
+-  (`lib.rs:3044`), modeled as an atomic step that sets `committed[k]` together with
+-  `downgrade_reference` (write-ref → writer's read-ref) and `pop_ok[k]`. The GPU
+-  DMA (phase 2) is modeled as a bare schedulable point — its data movement is
+-  irrelevant to visibility. Splitting `committed` and `pop_ok`, or committing
+-  *after* returning Ok, would break P-LIN.
+-- **BlockDevice (cold-path) hits.** A lookup that finds a demoted (`SSD`) entry is
+-  modeled as a direct hit (pin → serve → release). The real `promote_and_serve`
+-  re-reads from NVMe and may re-insert into the memory-tier; that promotion does
+-  not change dispatch-map visibility, so it is abstracted away here. (Promotion
+-  *atomicity* is a separate property — see `../promotion-atomicity`.)
+-- **SSD-tier eviction is out of scope.** Reclaiming space on the block device
+-  (removing `SSD` entries) belongs to a different subsystem; `evict_one_clean`
+-  here only touches pool-resident (`in_pool`) entries, matching the real code.
+-- **Write-through may fail.** `BgWriter` nondeterministically completes or fails
+-  the write (`IoError`). A failed write releases the read-ref without setting
+-  `persisted`, producing the unpinned-and-unpersisted entry that the eviction
+-  **drop** path (`dm.remove` inside `evict_one_clean`) must handle.
+-- **No blind LRU.** The real `evict_one_clean` refuses to blind-free a pinned
+-  slot; the model's evictor likewise only reclaims unpinned victims.
+-- **Bounded channel.** `write_q` is a bounded channel (`N_KEYS` deep); the real
+-  writer queue is effectively unbounded but the bound is never hit here.
++- **Populate visibility, two steps.** `create_memory_tier_entry` (lib.rs:3508, dm/lib.rs:393-439)
++  makes the entry visible with `write_ref = 1`. `downgrade_reference` (lib.rs:3552, dm/lib.rs:307)
++  then turns it into the writer's read-ref. These are two separate DM lock holds and are modelled as
++  two atomic steps. While `write_ref` is held, `dm.lookup` waits (dm/lib.rs:131-135) or times out
++  (dm/lib.rs:137-139 → lookup `KeyNotFound` lib.rs:3071; remove `KeyNotFound` lib.rs:3114). The
++  2 s timeout is **over-approximated**: Timeout may happen whenever a write_ref is held. P-LIN still
++  holds because populate sets `pop_ret` only after the downgrade.
++- **`downgrade_reference` + `writer.enqueue` + `return Ok`** are one atomic step. Setting `pop_ret`
++  there is no later than the real return, so it is stricter for P-LIN.
++- **`dm.lookup` is atomic with its pin.** `wait_for` returns the guard still held (dm/state.rs:54-78),
++  so it is modelled as a blocking guarded atomic.
++- **Evictor is demote-only.** `try_evict_to_block` (dm/lib.rs:548-580) and then `mt.remove`
++  (lib.rs:1068 / bg.rs:535) are two steps. A victim that is unpersisted, pinned, or BlockDevice is
++  skipped.
++- **Cold path.** `release_read` at lib.rs:3064 runs **before** `promote_and_serve` (lib.rs:3065), so
++  the entry is unpinned during the cold read. Modelled exactly that way: mt.insert at 768, staging
++  fallback at 770-780 (`L_OK_SSD_STAGED`), `AlreadyExists` at 1208-1217, NVMe read as a schedulable
++  gap, then `promote_block_to_memory_tier` (903-904), which fails with IoError if the entry is gone.
++- **Write-through can fail.** `BgWriter` nondeterministically persists (convert_to_storage 1464) or
++  fails (release_read 1442/1454) the write.
++- **Extents** (`remove_extent` lib.rs:3131, bg.rs:348; `reserve_extent` 1438) are not modelled.
++- **Not modelled at all**: `batch_populate` (lib.rs:3211), `batch_lookup` (lib.rs:2228; it also
++  releases the cold pin before cold prep, lib.rs:2428-2429), `promote_to_memory_tier` (lib.rs:3636),
++  `clear_memory_tier` (lib.rs:3794; it force-`dm.remove`s unpersisted entries, lib.rs:3815-3819, a
++  departure path through an explicit API), `pin`/`unpin`/`check`/`touch`, and the GPU staged
++  primitives called directly by the shm-queue.
++- **Spec/code ordering drift (not checked)**: spec 001 Edge Cases l.231 says remove frees "the
++  memory-tier slot first, then the dispatch-map entry". The code does `dm.remove` (3119) before
++  `mt.remove` (3124), on purpose (comment 3117-3118). The model follows the code.
++- **Bounded channel.** `write_q` has `N_KEYS` slots. The real queue is unbounded
++  (bg.rs:50-51), but the bound is never reached here.
++
++## Returned values (skill 2d item 6)
++
++Each value is either modelled (a variable set at the code line, plus an assert) or listed under
++**Left out**.
++
++| API | Value | Code line | Model | Assert |
++|---|---|---|---|---|
++| populate | `Ok(())` cached | lib.rs:3206 (via 3198, 3568) | `pop_ret=POP_OK_CACHED` | P-LIN, P-FIN |
++| populate | `Ok(())` drop-on-full (not cached) | lib.rs:3161-3174 | `pop_ret=POP_OK_DROPPED` | P-DROP |
++| populate | `Err(IoError)` D2H submit fail (slot freed 3476) | lib.rs:3474-3478 | `pop_ret=POP_ERR_IO` | P-RET, P-FIN |
++| populate | `Err(IoError)` stream_synchronize fail (no slot release; also the null-stream sync inside copy_gpu_to_memory_async, 3482-3484) | lib.rs:3193-3194 | `pop_ret=POP_ERR_IO` | P-RET, P-FIN (finds candidate bug 1) |
++| lookup | `Ok` MemoryTier serve | lib.rs:3036-3061 | `L_OK_MT` | P-PIN |
++| lookup | `Ok` BlockDevice promoted | lib.rs:903, 3067 | `L_OK_SSD_PROMOTED` | P-RET, P-CSLOT |
++| lookup | `Ok` BlockDevice staged (uncached) | lib.rs:770-780, 884-887 | `L_OK_SSD_STAGED` | P-RET |
++| lookup | `Err(KeyNotFound)` from `NotExist` | lib.rs:3029 | `L_KNF_NOTEXIST` | P-LIN |
++| lookup | `Err(KeyNotFound)` from dm `Timeout` | dm/lib.rs:137-139 → lib.rs:3071 | `L_KNF_TIMEOUT` | P-LIN |
++| lookup | `Err(AlreadyExists)` cold insert race | lib.rs:1208-1217 → 788 | `L_ERR_EXISTS` | P-RET |
++| lookup | `Err(IoError)` promote transition failed | lib.rs:903-904 | `L_ERR_IO_PROMOTE` | P-RET |
++| remove | `Ok(())` | lib.rs:3135 | `R_OK` | P-RET, P-REF |
++| remove | `Err(KeyNotFound)` from dm.lookup Err (Timeout) | lib.rs:3114 | `R_KNF_TIMEOUT` | P-RET |
++| remove | `Err(KeyNotFound)` from dm.remove KeyNotFound | lib.rs:3119-3120 | `R_KNF_ABSENT` | P-RET |
++| remove | `Err(KeyNotFound)` from dm.remove ActiveReferences | lib.rs:3119-3120, dm/lib.rs:341-343 | `R_KNF_PINNED` | P-RET |
++
++### Left out (with file:line)
++
++| API | Value | Code line | Why left out |
++|---|---|---|---|
++| populate | `Err(NotInitialized)` | lib.rs:3144 (ensure_initialized), 3182-3185, 3497-3505 | Lifecycle, not concurrency. |
++| populate | `Err(InvalidParameter)` size 0 | lib.rs:3147-3151 | Input validation. |
++| populate | `Err(InvalidParameter)` regions exceed slot | lib.rs:3441-3445 | Impossible for single-region populate (slot size = ipc size). |
++| populate | `Err(AlreadyExists)` mt.insert duplicate | lib.rs:1208-1217 → 3176 | Model has one Populator per key, and no other path inserts k while k is uncommitted except a cold promote, which needs a committed BlockDevice entry. |
++| populate | `Err(AlreadyExists)` / `Err(IoError)` from create_memory_tier_entry | lib.rs:3508-3518 | Same reason (no duplicate key). IoError needs eviction-policy or pool-id failure. |
++| populate | `Err(KeyNotFound)` mt.get missing in copy/complete | lib.rs:3435, 3506 | Needs another thread to `mt.remove` a reserved, uncommitted slot. Nothing in the model does that. **Not checked**: `remove()` step 3 (lib.rs:3124) could do it for a re-populated key, but the model's Remover never runs against a re-populate. |
++| populate | `Err(IoError)` integrity CRC / set_checksum |  lib.rs:3526-3549 | `integrity-check` feature is off by default (dispatcher/Cargo.toml:25,32). |
++| populate | `Err(IoError)` downgrade_reference | lib.rs:3552-3553 | Unreachable (write_ref is held). |
++| populate | `Err(e)` other reserve_memory errors (NotInitialized, InvalidParameter) | lib.rs:3176, 3341-3352 | Lifecycle/validation. |
++| populate | `writer.enqueue` Err ignored | lib.rs:3561 | Sender lives as long as the writer (bg.rs:78-86). |
++| lookup | `Err(NotInitialized)` | lib.rs:2999-3017 | Lifecycle. |
++| lookup | `Err(InvalidParameter)` MismatchSize | lib.rs:3030-3035 | dispatch-map never returns `MismatchSize` (no match in dm/lib.rs). It exists only in the mock. |
++| lookup | `Err(IoError)` integrity CRC mismatch | lib.rs:3038-3046 (verify_slot_crc 1233) | Feature off by default. |
++| lookup | `Err(IoError)` serve_memory_tier_to_gpu GPU errors | lib.rs:1262-1345 → 3048-3061 | GPU failure, not visibility. Pin released either way (3056). |
++| lookup | `Err(AllocationFailed)` no staging buffer | lib.rs:780-786 | Abstracted into `L_OK_SSD_STAGED`, i.e. a staging buffer is always assumed available. A real config without staging would return this error instead. |
++| lookup | `Err(IoError)`/`Err(...)` from NVMe pipeline, channel checkout, DmaBuffer wrap, no-drives branch | lib.rs:794-817, 830, 849-861, 870-884 | Device errors. The no-drives branch (793-817) is a test mode. |
++| lookup (sync) | `Err(IoError)` stream_synchronize | lib.rs:2204-2205 | Only reachable for non-null streams; GPU error. |
++| remove | `Err(NotInitialized)` | lib.rs:3097-3102 | Lifecycle. |
++| remove | `remove_extent` result ignored | lib.rs:3131 | Extents not modelled. |
++| lookup/remove | dm.lookup `RefCountOverflow` | dm/lib.rs:146-149 | Needs 2^32 pins. |
++
++**Returned values: modelled 15 / left out 20 / missing 0.**
++
++## Correspondence to Source Code (re-derived at acd24025)
++
++| Model location | Source | Lines |
++|---|---|---|
++| `do_populate` entry / size check left out | `populate` | lib.rs:3143, 3147 |
++| `do_populate` phase 1 reserve loop | `populate` → `reserve_memory` → `evict_and_insert` → `evict_for_space` → `evict_one_clean`; `mt.insert` | lib.rs:3159 → 3318 (loop 3400-3418) → 1176 (insert 1188) → 1123 (1146) → 1050; mt/lib.rs:328 |
++| `!reserved` → `POP_OK_DROPPED` | drop-on-full | lib.rs:3161-3174 |
++| phase 2 D2H submit fail | `copy_gpu_to_memory_async` (`mt.remove` + IoError) | lib.rs:3192, 3474-3478 |
++| phase 2 sync fail (**no slot release**) | `gpu.stream_synchronize(stream)?` | lib.rs:3193-3194 |
++| `FIX_SYNC_LEAK` reference behaviour | `batch_populate` sync fail → `release_memory` | lib.rs:3295-3302 |
++| phase 3a commit (`write_ref=1`) | `copy_gpu_to_memory_completed` → `dm.create_memory_tier_entry` | lib.rs:3198 → 3508; dm/lib.rs:393-439 |
++| phase 3b downgrade + enqueue + Ok | `dm.downgrade_reference`, `writer.enqueue`, `Ok` | lib.rs:3552, 3561, 3568, 3206; dm/lib.rs:307-332 |
++| `BgWriter` | `process_write_job`: `mt.peek`, failure `release_read`, `convert_to_storage` | lib.rs:1390, 1399, 1402/1432/1442/1454, 1464; dm/lib.rs:176-208 |
++| `evict_one_clean` inline | `evict_one_clean` → `dm.try_evict_to_block` / `mt.remove` / skip | lib.rs:1050, 1066, 1068, 1073, 1076, 1106; dm/lib.rs:548-580 |
++| `Evictor` | `MemoryTierEvictor::evictor_loop` | bg.rs:471, 523, 531, 535 |
++| `Looker` dm.lookup (wait / Timeout / pin) | `lookup_async` → `dm.lookup` | lib.rs:3011; dm/lib.rs:128-174 (wait 131-135, Timeout 137-139, pin 146-149); dm/state.rs:54-78 |
++| `Looker` NotExist / Timeout → KeyNotFound | `lookup_async` | lib.rs:3029, 3071 |
++| `Looker` MemoryTier serve + release | `lookup_async` | lib.rs:3036, 3048, 3056, 3061 |
++| `Looker` BlockDevice: release **before** promote | `lookup_async` | lib.rs:3063, 3064, 3065 |
++| `Looker` cold insert / staging / AlreadyExists | `promote_and_serve` → `evict_and_insert`; staging; `mt.insert` AlreadyExists | lib.rs:750, 768, 770-787, 1208-1217 |
++| `Looker` NVMe gap + promote transition | pipeline read; `promote_block_to_memory_tier` (IoError) | lib.rs:851-876, 884-887, 903-904; dm/lib.rs:482-528 |
++| `FIX_COLD_PIN` reference behaviour | `batch_lookup` also releases before cold prep | lib.rs:2428-2429 (same pattern, not fixed by the switch) |
++| `Remover` step 1 | `remove` → `dm.lookup` + `release_read` / Err → KeyNotFound | lib.rs:3096, 3105, 3107, 3111, 3114 |
++| `Remover` step 2 | `dm.remove` (ActiveReferences / KeyNotFound → KeyNotFound) | lib.rs:3119-3120; dm/lib.rs:334-357 |
++| `Remover` step 3 | `mt.remove(key)`, `remove_extent`, `Ok` | lib.rs:3124, 3131, 3135; mt/lib.rs:483-514 |
++| `SsdEvictor` (opt-in) | `BackgroundEvictor::evictor_loop`: `oldest_keys`, `get_evictable_offset`, `mt.remove` **before** `dm.remove`, `remove_extent` | bg.rs:279, 314, 322 (384-404), 328, 331, 348 |
+ 
+ ## Running
+ 
+-Spin must be installed (see `../write-before-evict/README.md`, or
+-`../install-spin.sh --prefix $HOME/.local`).
+-
+ ```bash
+-cd modelling/spin/populate-lookup-linearizability
+-make            # spin -a, compile pan, run exhaustive safety verification
+-make clean      # remove generated pan.* and trails
++export PATH=$HOME/.local/bin:$PATH
++make clean && make safety     # exhaustive safety (-DSAFETY)
++make liveness                 # same model, non-SAFETY pan with -a (no accept labels → same search)
++make clean && make safety MODEL=populate_lookup_linearizability_control.pml   # with the two fixes
++spin -t -p -g populate_lookup_linearizability.pml                            # replay a trail
+ ```
+ 
+-To replay a counterexample if one is ever produced:
+-
+-```bash
+-spin -t -p -g -l populate_lookup_linearizability.pml
+-```
++Build switches (pass to `spin -a`): `-DFIX_SYNC_LEAK`, `-DFIX_COLD_PIN` (the control turns both on),
++`-DLITERAL_OK` (literal Ok contract), `-DNO_SLOT_CHECK` (diagnostic: drops P-CSLOT and the orphan-slot
++P-FIN assert), `-DSSD_EVICTOR` (+ `-DFIX_SSD_EVICT_ORDER`).
+ 
+ ## Tuning the Model
+ 
+-| Parameter   | Default | Meaning / effect                                                            |
+-|-------------|---------|-----------------------------------------------------------------------------|
+-| `N_KEYS`    | 2       | Number of distinct keys / Populators. More keys ⇒ larger state space.       |
+-| `POOL_CAP`  | 1       | Memory-tier pool slots. `< N_KEYS` forces eviction (demote/drop) contention. |
+-| `N_LOOK`    | 2       | Concurrent Looker processes (exercises P-PIN across overlapping pins).       |
+-| `LOOKUPS`   | 1       | Lookups per Looker. Raising to 2 keeps full coverage but grows to ~22M states. |
+-| `MAX_TRIES` | 4       | `max_eviction_attempts` before `populate` gives up with `AllocationFailed`. |
+-
+-Current defaults verify exhaustively in **~4.4 s**: **7,354,797 states**, depth 221,
+-**0 errors**, and **0 unreached states** in every proctype (100% coverage).
+-
+-## Correspondence to Source Code
+-
+-| Model location (`populate_lookup_linearizability.pml`)   | Source (`components/dispatcher/src/lib.rs`)                     | Lines        |
+-|----------------------------------------------------------|----------------------------------------------------------------|--------------|
+-| `do_populate` phase 1 (reserve + evict loop)             | `populate` → `reserve_memory` → `evict_and_insert` → `evict_for_space` | 2860, 2907, 1015, 962 |
+-| `do_populate` phase 3 (commit + downgrade, atomic)       | `copy_gpu_to_memory_completed`: `create_memory_tier_entry`, `downgrade_reference` | 3025, 3044, 3088 |
+-| `write_q ! k, gen` (enqueue write-through)               | `copy_gpu_to_memory_completed`: `writer.enqueue`               | 3095–3102    |
+-| `Looker` atomic `dm.lookup` snapshot + pin               | `lookup_async` → `dm.lookup` (read-ref on hit)                 | 2711, 3676   |
+-| `Looker` hit-serve + `release_read`                      | `lookup_async` MemoryTier / BlockDevice serve + `release_read` | 2753–2785    |
+-| `evict_one_clean` demote branch                          | `evict_one_clean` → `dm.try_evict_to_block` / `convert_to_storage` | 920, 3730 |
+-| `evict_one_clean` drop branch                            | `evict_one_clean` → `dm.remove`                                | 920, 3810    |
+-| `BgWriter` persist + release ref (and failure branch)    | background write-through; `convert_to_storage` consumes the ref | 3730         |
+-| `Remover`                                                | `dispatcher.remove` → `dm.remove` (rejects `read_refs > 0`)    | 2813, 3810   |
++| Parameter | Default | Meaning |
++|---|---|---|
++| `N_KEYS` | 2 | keys / Populators |
++| `POOL_CAP` | 1 | memory-tier slots (< N_KEYS forces eviction) |
++| `N_LOOK` | 2 | concurrent Lookers |
++| `LOOKUPS` | 1 | lookups per Looker |
++| `MAX_TRIES` | 4 | reserve attempts before AllocationFailed (stands for max_eviction_attempts + backpressure budget) |
++
++With the fixes (control), the default parameters take 36.75M states, about 33 s, and 4.3 GB. With
++`-DSSD_EVICTOR -DFIX_SSD_EVICT_ORDER` and `N_LOOK=2` it is 231M states, 237 s, and 26 GB, which is
++over the 24 GB budget. With `N_LOOK=1` it is 9.4M states, 6.3 s, and 1.0 GB. See RESULT.md.

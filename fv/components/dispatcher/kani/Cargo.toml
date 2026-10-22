@@ -1,0 +1,26 @@
+[package]
+name = "dispatcher-verif-kani"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+# Standalone crate (opts out of the repo-root workspace). It depends on the REAL
+# `dispatcher` crate, so harnesses call its public code directly (the cold-read
+# pipeline in `dispatcher::pipeline`, `TierEventCounters`). The `IDispatcher`
+# methods themselves cannot be driven from outside the crate: every one starts with
+# `ensure_initialized()`, and `initialize()` spawns OS threads (background writer,
+# evictors) that Kani cannot execute. Those methods are covered by a DISCLOSED
+# MIRROR in `src/mirror.rs` that transcribes each method body against the real
+# `interfaces` traits, with line references to `components/dispatcher/src/lib.rs`.
+[workspace]
+
+[lib]
+name = "dispatcher_verif_kani"
+path = "src/lib.rs"
+
+[dependencies]
+dispatcher = { path = ".." }
+interfaces = { path = "../../interfaces", features = ["spdk"] }
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)'] }

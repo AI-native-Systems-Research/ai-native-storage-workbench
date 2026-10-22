@@ -1,0 +1,119 @@
+  1:	proc  0 (:init::1) promotion_atomicity.pml:549 (state 17)	[k = 0]
+  1:	proc  0 (:init::1) promotion_atomicity.pml:564 (state 15)	[.(goto)]
+  1:	proc  0 (:init::1) promotion_atomicity.pml:551 (state 14)	[DO]
+  1:	proc  0 (:init::1) promotion_atomicity.pml:553 (state 3)	[dm_state[k] = DM_BLOCK_DEVICE]
+  1:	proc  0 (:init::1) promotion_atomicity.pml:554 (state 4)	[dm_read_ref[k] = 0]
+  1:	proc  0 (:init::1) promotion_atomicity.pml:555 (state 5)	[dm_write_ref[k] = 0]
+  1:	proc  0 (:init::1) promotion_atomicity.pml:556 (state 6)	[mt_allocated[k] = 0]
+  1:	proc  0 (:init::1) promotion_atomicity.pml:557 (state 7)	[slot_owner[k] = 0]
+  1:	proc  0 (:init::1) promotion_atomicity.pml:558 (state 8)	[promotion_success[k] = 0]
+  1:	proc  0 (:init::1) promotion_atomicity.pml:559 (state 9)	[inserts_in_gen[k] = 0]
+  1:	proc  0 (:init::1) promotion_atomicity.pml:560 (state 10)	[in_flight[k] = 0]
+  1:	proc  0 (:init::1) promotion_atomicity.pml:561 (state 11)	[k = (k+1)]
+  1:	proc  0 (:init::1) promotion_atomicity.pml:564 (state 15)	[.(goto)]
+  1:	proc  0 (:init::1) promotion_atomicity.pml:551 (state 14)	[DO]
+  1:	proc  0 (:init::1) promotion_atomicity.pml:553 (state 3)	[dm_state[k] = DM_BLOCK_DEVICE]
+  1:	proc  0 (:init::1) promotion_atomicity.pml:554 (state 4)	[dm_read_ref[k] = 0]
+  1:	proc  0 (:init::1) promotion_atomicity.pml:555 (state 5)	[dm_write_ref[k] = 0]
+  1:	proc  0 (:init::1) promotion_atomicity.pml:556 (state 6)	[mt_allocated[k] = 0]
+  1:	proc  0 (:init::1) promotion_atomicity.pml:557 (state 7)	[slot_owner[k] = 0]
+  1:	proc  0 (:init::1) promotion_atomicity.pml:558 (state 8)	[promotion_success[k] = 0]
+  1:	proc  0 (:init::1) promotion_atomicity.pml:559 (state 9)	[inserts_in_gen[k] = 0]
+  1:	proc  0 (:init::1) promotion_atomicity.pml:560 (state 10)	[in_flight[k] = 0]
+  1:	proc  0 (:init::1) promotion_atomicity.pml:561 (state 11)	[k = (k+1)]
+  1:	proc  0 (:init::1) promotion_atomicity.pml:564 (state 15)	[.(goto)]
+  1:	proc  0 (:init::1) promotion_atomicity.pml:551 (state 14)	[DO]
+  1:	proc  0 (:init::1) promotion_atomicity.pml:562 (state 13)	[goto :b7]
+  1:	proc  0 (:init::1) promotion_atomicity.pml:551 (state 16)	[break]
+Starting Evictor with pid 1
+  2:	proc  0 (:init::1) promotion_atomicity.pml:567 (state 18)	[(run Evictor())]
+  3:	proc  0 (:init::1) promotion_atomicity.pml:571 (state 19)	[t = 0]
+  4:	proc  0 (:init::1) promotion_atomicity.pml:573 (state 20)	[((t<3))]
+Starting LookupThread with pid 2
+  5:	proc  0 (:init::1) promotion_atomicity.pml:574 (state 21)	[(run LookupThread(t))]
+  6:	proc  0 (:init::1) promotion_atomicity.pml:575 (state 22)	[t = (t+1)]
+  7:	proc  0 (:init::1) promotion_atomicity.pml:573 (state 20)	[((t<3))]
+Starting LookupThread with pid 3
+  8:	proc  0 (:init::1) promotion_atomicity.pml:574 (state 21)	[(run LookupThread(t))]
+  9:	proc  0 (:init::1) promotion_atomicity.pml:575 (state 22)	[t = (t+1)]
+ 10:	proc  0 (:init::1) promotion_atomicity.pml:573 (state 20)	[((t<3))]
+Starting LookupThread with pid 4
+ 11:	proc  0 (:init::1) promotion_atomicity.pml:574 (state 21)	[(run LookupThread(t))]
+ 12:	proc  0 (:init::1) promotion_atomicity.pml:575 (state 22)	[t = (t+1)]
+ 13:	proc  0 (:init::1) promotion_atomicity.pml:576 (state 23)	[((t>=3))]
+ 14:	proc  0 (:init::1) promotion_atomicity.pml:572 (state 27)	[break]
+ 15:	proc  4 (LookupThread:1) promotion_atomicity.pml:310 (state 1)	[k = (tid%2)]
+ 15:	proc  4 (LookupThread:1) promotion_atomicity.pml:311 (state 2)	[n = 0]
+ 16:	proc  4 (LookupThread:1) promotion_atomicity.pml:313 (state 3)	[((n<1))]
+ 16:	proc  4 (LookupThread:1) promotion_atomicity.pml:314 (state 4)	[n = (n+1)]
+ 16:	proc  4 (LookupThread:1) promotion_atomicity.pml:315 (state 5)	[ret = R_NONE]
+ 17:	proc  3 (LookupThread:1) promotion_atomicity.pml:310 (state 1)	[k = (tid%2)]
+ 17:	proc  3 (LookupThread:1) promotion_atomicity.pml:311 (state 2)	[n = 0]
+ 18:	proc  3 (LookupThread:1) promotion_atomicity.pml:313 (state 3)	[((n<1))]
+ 18:	proc  3 (LookupThread:1) promotion_atomicity.pml:314 (state 4)	[n = (n+1)]
+ 18:	proc  3 (LookupThread:1) promotion_atomicity.pml:315 (state 5)	[ret = R_NONE]
+ 19:	proc  2 (LookupThread:1) promotion_atomicity.pml:310 (state 1)	[k = (tid%2)]
+ 19:	proc  2 (LookupThread:1) promotion_atomicity.pml:311 (state 2)	[n = 0]
+ 20:	proc  2 (LookupThread:1) promotion_atomicity.pml:313 (state 3)	[((n<1))]
+ 20:	proc  2 (LookupThread:1) promotion_atomicity.pml:314 (state 4)	[n = (n+1)]
+ 20:	proc  2 (LookupThread:1) promotion_atomicity.pml:315 (state 5)	[ret = R_NONE]
+ 21:	proc  2 (LookupThread:1) promotion_atomicity.pml:320 (state 6)	[((dm_write_ref[k]==0))]
+ 22:	proc  2 (LookupThread:1) promotion_atomicity.pml:323 (state 9)	[((dm_state[k]==DM_BLOCK_DEVICE))]
+ 22:	proc  2 (LookupThread:1) promotion_atomicity.pml:324 (state 10)	[dm_read_ref[k] = (dm_read_ref[k]+1)]
+ 22:	proc  2 (LookupThread:1) promotion_atomicity.pml:324 (state 11)	[lres = L_BD]
+ 23:	proc  2 (LookupThread:1) promotion_atomicity.pml:343 (state 26)	[((lres==L_BD))]
+ 24:	proc  2 (LookupThread:1) promotion_atomicity.pml:346 (state 27)	[assert((dm_read_ref[k]>0))]
+ 24:	proc  2 (LookupThread:1) promotion_atomicity.pml:347 (state 28)	[dm_read_ref[k] = (dm_read_ref[k]-1)]
+ 24:	proc  2 (LookupThread:1) promotion_atomicity.pml:352 (state 30)	[alloc_failed = 0]
+ 24:	proc  2 (LookupThread:1) promotion_atomicity.pml:353 (state 31)	[tries = 0]
+ 25:	proc  2 (LookupThread:1) promotion_atomicity.pml:355 (state 32)	[(1)]
+ 25:	proc  2 (LookupThread:1) promotion_atomicity.pml:357 (state 33)	[ea = 0]
+ 26:	proc  2 (LookupThread:1) promotion_atomicity.pml:370 (state 99)	[else]
+ 27:	proc  2 (LookupThread:1) promotion_atomicity.pml:374 (state 106)	[else]
+ 28:	proc  2 (LookupThread:1) promotion_atomicity.pml:374 (state 107)	[(1)]
+ 29:	proc  2 (LookupThread:1) promotion_atomicity.pml:382 (state 114)	[((!(mt_allocated[k])&&(mt_pool_used<2)))]
+ 29:	proc  2 (LookupThread:1) promotion_atomicity.pml:383 (state 115)	[assert((in_flight[k]==0))]
+ 29:	proc  2 (LookupThread:1) promotion_atomicity.pml:384 (state 116)	[assert((inserts_in_gen[k]==0))]
+ 29:	proc  2 (LookupThread:1) promotion_atomicity.pml:385 (state 117)	[inserts_in_gen[k] = 1]
+ 29:	proc  2 (LookupThread:1) promotion_atomicity.pml:386 (state 118)	[mt_allocated[k] = 1]
+ 29:	proc  2 (LookupThread:1) promotion_atomicity.pml:387 (state 119)	[mt_pool_used = (mt_pool_used+1)]
+ 29:	proc  2 (LookupThread:1) promotion_atomicity.pml:388 (state 120)	[slot_owner[k] = (tid+1)]
+ 29:	proc  2 (LookupThread:1) promotion_atomicity.pml:389 (state 121)	[in_flight[k] = (in_flight[k]+1)]
+ 29:	proc  2 (LookupThread:1) promotion_atomicity.pml:390 (state 122)	[ins = I_OK]
+ 30:	proc  2 (LookupThread:1) promotion_atomicity.pml:394 (state 126)	[((ins==I_OK))]
+ 31:	proc  2 (LookupThread:1) promotion_atomicity.pml:424 (state 207)	[((!(alloc_failed)&&(ins==I_OK)))]
+ 32:	proc  2 (LookupThread:1) promotion_atomicity.pml:428 (state 209)	[ret = R_IO_ERROR]
+ 33:	proc  2 (LookupThread:1) promotion_atomicity.pml:454 (state 235)	[else]
+ 34:	proc  2 (LookupThread:1) promotion_atomicity.pml:454 (state 236)	[(1)]
+ 35:	proc  2 (LookupThread:1) promotion_atomicity.pml:457 (state 239)	[((ret!=R_OK))]
+ 36:	proc  2 (LookupThread:1) promotion_atomicity.pml:472 (state 240)	[in_flight[k] = (in_flight[k]-1)]
+spin: promotion_atomicity.pml:475, Error: assertion violated
+spin: text of failed assertion: assert((slot_owner[k]!=(tid+1)))
+ 37:	proc  2 (LookupThread:1) promotion_atomicity.pml:475 (state 242)	[assert((slot_owner[k]!=(tid+1)))]
+spin: trail ends after 37 steps
+#processes: 5
+		dm_state[0] = DM_BLOCK_DEVICE
+		dm_state[1] = DM_BLOCK_DEVICE
+		dm_read_ref[0] = 0
+		dm_read_ref[1] = 0
+		dm_write_ref[0] = 0
+		dm_write_ref[1] = 0
+		mt_allocated[0] = 1
+		mt_allocated[1] = 0
+		mt_pool_used = 1
+		slot_owner[0] = 1
+		slot_owner[1] = 0
+		inserts_in_gen[0] = 1
+		inserts_in_gen[1] = 0
+		promotion_success[0] = 0
+		promotion_success[1] = 0
+		in_flight[0] = 0
+		in_flight[1] = 0
+		threads_done = 0
+		shutdown = 0
+ 37:	proc  4 (LookupThread:1) promotion_atomicity.pml:319 (state 17)
+ 37:	proc  3 (LookupThread:1) promotion_atomicity.pml:319 (state 17)
+ 37:	proc  2 (LookupThread:1) promotion_atomicity.pml:520 (state 249)
+ 37:	proc  1 (Evictor:1) promotion_atomicity.pml:220 (state 54)
+ 37:	proc  0 (:init::1) promotion_atomicity.pml:580 (state 29)
+5 processes created

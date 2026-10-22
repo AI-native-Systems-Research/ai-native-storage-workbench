@@ -1,0 +1,91 @@
+cc -O2 -o pan-live pan.c
+./pan-live -a -m200000
+warning: no accept labels are defined, so option -a has no effect (ignored)
+Depth=     554 States=    1e+06 Transitions= 1.54e+06 Memory=   233.115	t=     0.46 R=   2e+06
+Depth=     669 States=    2e+06 Transitions= 3.14e+06 Memory=   331.162	t=      0.9 R=   2e+06
+
+(Spin Version 6.5.2 -- 18 September 2025)
+	+ Partial Order Reduction
+
+Full statespace search for:
+	never claim         	- (none specified)
+	assertion violations	+
+	acceptance   cycles 	- (not selected)
+	invalid end states	+
+
+State-vector 104 byte, depth reached 669, errors: 0
+  2805066 states, stored
+  1588107 states, matched
+  4393173 transitions (= stored+matched)
+   382066 atomic steps
+hash conflicts:     70853 (resolved)
+
+Stats on memory usage (in Megabytes):
+  353.116	equivalent memory usage for states (stored*(State-vector + overhead))
+  272.562	actual memory usage for states (compression: 77.19%)
+         	state-vector as stored = 74 byte + 28 byte overhead
+  128.000	memory used for hash table (-w24)
+   10.681	memory used for DFS stack (-m200000)
+  411.045	total actual memory usage
+
+
+unreached in proctype Evictor
+	(0 of 57 states)
+unreached in proctype SsdEvictor
+	(0 of 56 states)
+unreached in proctype LookupThread
+	promotion_atomicity.pml:189, state 143, "promotion_success[c] = 0"
+	promotion_atomicity.pml:190, state 144, "te = TE_OK"
+	promotion_atomicity.pml:182, state 149, "((dm_state[c]==DM_EMPTY))"
+	promotion_atomicity.pml:182, state 149, "(((dm_state[c]!=DM_EMPTY)&&((dm_read_ref[c]!=0)||(dm_write_ref[c]!=0))))"
+	promotion_atomicity.pml:182, state 149, "((((dm_state[c]==DM_MEMORY_TIER)&&(dm_read_ref[c]==0))&&(dm_write_ref[c]==0)))"
+	promotion_atomicity.pml:182, state 149, "((((dm_state[c]==DM_BLOCK_DEVICE)&&(dm_read_ref[c]==0))&&(dm_write_ref[c]==0)))"
+	promotion_atomicity.pml:156, state 153, "mt_allocated[c] = 0"
+	promotion_atomicity.pml:157, state 154, "mt_pool_used = (mt_pool_used-1)"
+	promotion_atomicity.pml:158, state 155, "slot_owner[c] = 0"
+	promotion_atomicity.pml:159, state 156, "inserts_in_gen[c] = 0"
+	promotion_atomicity.pml:160, state 158, "(1)"
+	promotion_atomicity.pml:152, state 162, "(mt_allocated[c])"
+	promotion_atomicity.pml:152, state 162, "else"
+	promotion_atomicity.pml:201, state 166, "c = (c+1)"
+	promotion_atomicity.pml:197, state 167, "((te==TE_OK))"
+	promotion_atomicity.pml:197, state 167, "else"
+	promotion_atomicity.pml:179, state 171, "(mt_allocated[c])"
+	promotion_atomicity.pml:179, state 171, "(1)"
+	promotion_atomicity.pml:177, state 175, "((c<2))"
+	promotion_atomicity.pml:177, state 175, "((c>=2))"
+	promotion_atomicity.pml:207, state 180, "c = 0"
+	promotion_atomicity.pml:174, state 181, "freed = 0"
+	promotion_atomicity.pml:399, state 189, "((tries>=2))"
+	promotion_atomicity.pml:399, state 189, "else"
+	promotion_atomicity.pml:452, state 229, "ret = R_IO_ERROR"
+	promotion_atomicity.pml:467, state 243, "(1)"
+	(18 of 320 states)
+unreached in init
+	(0 of 67 states)
+
+pan: elapsed time 1.27 seconds
+pan: rate 2208713.4 states/second
+	Command being timed: "timeout 600 make liveness MODEL=promotion_atomicity_control.pml"
+	User time (seconds): 3.42
+	System time (seconds): 0.25
+	Percent of CPU this job got: 99%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:03.69
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 421948
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 82729
+	Voluntary context switches: 21
+	Involuntary context switches: 10
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 2048
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

@@ -1,0 +1,15 @@
+no-lost-extents                      safety    errors: 1   1747 states, stored        0.03s   143412KB  assertion violated ((extent_state[i]!=3)
+no-lost-extents                      liveness  errors: 1   1780 states, stored        0.03s   143416KB  assertion violated ((extent_state[i]!=3)
+no-lost-extents_control              safety    errors: 0   9195270 states, stored     5.71s   922292KB  invalid end state
+no-lost-extents_control              liveness  errors: 0   9476851 states, stored     6.22s   945972KB  invalid end state
+populate-lookup-linearizability      safety    errors: 1   1393 states, stored        0.03s   143408KB  assertion violated ( !(in_pool[k])
+populate-lookup-linearizability      liveness  errors: 1   1393 states, stored        0.03s   143416KB  assertion violated ( !(in_pool[k])
+populate-lookup-linearizability_control safety    errors: 0   41944255 states, stored   34.91s  4879448KB  invalid end state
+populate-lookup-linearizability_control liveness  errors: 0   41944255 states, stored   35.81s  4879448KB  invalid end state
+promotion-atomicity                  safety    errors: 1   4289 states, stored        0.03s   143412KB  assertion violated (ret!=19)
+promotion-atomicity                  liveness  errors: 1   4289 states, stored        0.03s   143416KB  assertion violated (ret!=19)
+promotion-atomicity_control          -         SPIN-A FAILED
+write-before-evict                   safety    errors: 1   30333 states, stored       0.04s   145952KB  assertion violated (filling[victim]!=mt_slot[victim])
+write-before-evict                   liveness  errors: 1   30333 states, stored       0.04s   145948KB  assertion violated (filling[victim]!=mt_slot[victim])
+write-before-evict_control           safety    errors: 0   8617412 states, stored     4.06s  1013788KB  invalid end state
+write-before-evict_control           liveness  errors: 0   8617412 states, stored     4.08s   948512KB  invalid end state

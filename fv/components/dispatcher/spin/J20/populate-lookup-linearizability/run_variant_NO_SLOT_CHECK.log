@@ -1,0 +1,110 @@
+Depth=     276 States=    1e+06 Transitions= 1.87e+06 Memory=   232.822	t=     0.51 R=   2e+06
+Depth=     276 States=    2e+06 Transitions= 3.78e+06 Memory=   331.845	t=     1.07 R=   2e+06
+Depth=     291 States=    3e+06 Transitions= 5.71e+06 Memory=   430.381	t=     1.63 R=   2e+06
+Depth=     299 States=    4e+06 Transitions=  7.5e+06 Memory=   528.916	t=     2.18 R=   2e+06
+Depth=     299 States=    5e+06 Transitions= 9.34e+06 Memory=   627.549	t=     2.76 R=   2e+06
+Depth=     299 States=    6e+06 Transitions= 1.11e+07 Memory=   726.181	t=     3.34 R=   2e+06
+Depth=     299 States=    7e+06 Transitions=  1.3e+07 Memory=   824.912	t=     3.96 R=   2e+06
+Depth=     299 States=    8e+06 Transitions= 1.48e+07 Memory=   923.740	t=     4.61 R=   2e+06
+Depth=     299 States=    9e+06 Transitions= 1.68e+07 Memory=  1022.373	t=      5.3 R=   2e+06
+Depth=     299 States=    1e+07 Transitions= 1.86e+07 Memory=  1121.006	t=     5.97 R=   2e+06
+Depth=     299 States=  1.1e+07 Transitions= 2.05e+07 Memory=  1220.029	t=     6.65 R=   2e+06
+Depth=     299 States=  1.2e+07 Transitions= 2.24e+07 Memory=  1316.513	t=     7.34 R=   2e+06
+Depth=     299 States=  1.3e+07 Transitions= 2.43e+07 Memory=  1415.341	t=     8.08 R=   2e+06
+Depth=     299 States=  1.4e+07 Transitions= 2.62e+07 Memory=  1514.170	t=     8.81 R=   2e+06
+Depth=     299 States=  1.5e+07 Transitions= 2.81e+07 Memory=  1612.900	t=     9.55 R=   2e+06
+Depth=     299 States=  1.6e+07 Transitions=    3e+07 Memory=  1711.435	t=     10.3 R=   2e+06
+Depth=     299 States=  1.7e+07 Transitions= 3.19e+07 Memory=  1810.556	t=     11.1 R=   2e+06
+Depth=     299 States=  1.8e+07 Transitions= 3.39e+07 Memory=  1909.580	t=     11.9 R=   2e+06
+Depth=     303 States=  1.9e+07 Transitions= 3.56e+07 Memory=  2008.115	t=     12.7 R=   2e+06
+Depth=     303 States=    2e+07 Transitions= 3.75e+07 Memory=  2106.650	t=     13.4 R=   1e+06
+Depth=     303 States=  2.1e+07 Transitions= 3.94e+07 Memory=  2205.381	t=     14.3 R=   1e+06
+Depth=     303 States=  2.2e+07 Transitions= 4.13e+07 Memory=  2300.009	t=     15.1 R=   1e+06
+Depth=     303 States=  2.3e+07 Transitions= 4.33e+07 Memory=  2399.131	t=     16.2 R=   1e+06
+Depth=     303 States=  2.4e+07 Transitions= 4.52e+07 Memory=  2497.861	t=     17.6 R=   1e+06
+Depth=     303 States=  2.5e+07 Transitions= 4.71e+07 Memory=  2596.494	t=     18.5 R=   1e+06
+Depth=     303 States=  2.6e+07 Transitions= 4.89e+07 Memory=  2695.127	t=     19.3 R=   1e+06
+Depth=     303 States=  2.7e+07 Transitions= 5.07e+07 Memory=  2793.759	t=     20.2 R=   1e+06
+Depth=     303 States=  2.8e+07 Transitions= 5.26e+07 Memory=  2892.295	t=     21.1 R=   1e+06
+Depth=     303 States=  2.9e+07 Transitions= 5.45e+07 Memory=  2991.025	t=     22.1 R=   1e+06
+Depth=     303 States=    3e+07 Transitions= 5.65e+07 Memory=  3089.560	t=       23 R=   1e+06
+Depth=     303 States=  3.1e+07 Transitions= 5.83e+07 Memory=  3188.584	t=     23.9 R=   1e+06
+Depth=     303 States=  3.2e+07 Transitions= 6.02e+07 Memory=  3284.091	t=     24.9 R=   1e+06
+Depth=     303 States=  3.3e+07 Transitions= 6.22e+07 Memory=  3383.115	t=     25.9 R=   1e+06
+Depth=     303 States=  3.4e+07 Transitions=  6.4e+07 Memory=  3482.041	t=     26.9 R=   1e+06
+pan: resizing hashtable to -w26..  done
+Depth=     303 States=  3.5e+07 Transitions=  6.6e+07 Memory=  4076.853	t=     31.3 R=   1e+06
+Depth=     303 States=  3.6e+07 Transitions= 6.78e+07 Memory=  4175.681	t=       32 R=   1e+06
+Depth=     303 States=  3.7e+07 Transitions= 6.97e+07 Memory=  4274.802	t=     32.8 R=   1e+06
+Depth=     303 States=  3.8e+07 Transitions= 7.17e+07 Memory=  4373.826	t=     33.6 R=   1e+06
+Depth=     305 States=  3.9e+07 Transitions= 7.35e+07 Memory=  4472.263	t=     34.3 R=   1e+06
+Depth=     305 States=    4e+07 Transitions= 7.52e+07 Memory=  4570.701	t=       35 R=   1e+06
+Depth=     305 States=  4.1e+07 Transitions=  7.7e+07 Memory=  4669.236	t=     35.7 R=   1e+06
+Depth=     305 States=  4.2e+07 Transitions= 7.89e+07 Memory=  4767.674	t=     36.5 R=   1e+06
+Depth=     305 States=  4.3e+07 Transitions= 8.08e+07 Memory=  4866.502	t=     37.2 R=   1e+06
+
+(Spin Version 6.5.2 -- 18 September 2025)
+	+ Partial Order Reduction
+
+Full statespace search for:
+	never claim         	- (none specified)
+	assertion violations	+
+	cycle checks       	- (disabled by -DSAFETY)
+	invalid end states	+
+
+State-vector 116 byte, depth reached 305, errors: 0
+ 43169208 states, stored
+ 37957501 states, matched
+ 81126709 transitions (= stored+matched)
+ 41941516 atomic steps
+hash conflicts:  27705346 (resolved)
+
+Stats on memory usage (in Megabytes):
+ 5928.389	equivalent memory usage for states (stored*(State-vector + overhead))
+ 4362.901	actual memory usage for states (compression: 73.59%)
+         	state-vector as stored = 78 byte + 28 byte overhead
+  512.000	memory used for hash table (-w26)
+   10.681	memory used for DFS stack (-m200000)
+    2.382	memory lost to fragmentation
+ 4883.201	total actual memory usage
+
+
+unreached in proctype Populator
+	populate_lookup_linearizability.pml:150, state 91, "(1)"
+	(1 of 122 states)
+unreached in proctype BgWriter
+	(0 of 17 states)
+unreached in proctype Evictor
+	(0 of 47 states)
+unreached in proctype Remover
+	(0 of 46 states)
+unreached in proctype Looker
+	(0 of 147 states)
+unreached in init
+	(0 of 63 states)
+
+pan: elapsed time 37.4 seconds
+pan: rate 1155802.1 states/second
+	Command being timed: "./pan -m200000"
+	User time (seconds): 35.09
+	System time (seconds): 2.44
+	Percent of CPU this job got: 99%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:37.70
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 5001748
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 1085805
+	Voluntary context switches: 34
+	Involuntary context switches: 59
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 72
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

@@ -1,0 +1,1123 @@
+diff -ruN '--exclude=*.trail' '--exclude=*.log' '--exclude=*.txt' '--exclude=trails' '--exclude=control' '--exclude=bug2' '--exclude=RESULT.md' orig/promotion-atomicity/promotion_atomicity_control.pml promotion-atomicity/promotion_atomicity_control.pml
+--- orig/promotion-atomicity/promotion_atomicity_control.pml	1969-12-31 16:00:00.000000000 -0800
++++ promotion-atomicity/promotion_atomicity_control.pml	2026-10-17 00:52:36.382956075 -0700
+@@ -0,0 +1,18 @@
++/*
++ * CONTROL copy of promotion_atomicity.pml: same model, with the three
++ * minimal code fixes switched on (see the FIX_* hooks in the main file and
++ * RESULT.md). Not a model of the shipped code.
++ *   FIX_RECOVER  lookup_async (lib.rs:3063-3068) maps AlreadyExists from
++ *                promote_and_serve to serve_concurrently_promoted (1349-1388),
++ *                as batch_lookup does at 2937-2945.
++ *   FIX_UNDO     promote_and_serve calls mt.remove(key) before returning Err
++ *                after a successful evict_and_insert (883, 904).
++ *   FIX_PIN      lookup_async releases the read pin (3064) only after
++ *                promote_and_serve returns, and BackgroundEvictor
++ *                (background.rs:327-333) calls mt.remove only after dm.remove
++ *                succeeded.
++ */
++#define FIX_RECOVER 1
++#define FIX_UNDO    1
++#define FIX_PIN     1
++#include "promotion_atomicity.pml"
+diff -ruN '--exclude=*.trail' '--exclude=*.log' '--exclude=*.txt' '--exclude=trails' '--exclude=control' '--exclude=bug2' '--exclude=RESULT.md' orig/promotion-atomicity/promotion_atomicity.pml promotion-atomicity/promotion_atomicity.pml
+--- orig/promotion-atomicity/promotion_atomicity.pml	2026-10-17 00:05:41.874414382 -0700
++++ promotion-atomicity/promotion_atomicity.pml	2026-10-17 01:25:30.581188780 -0700
+@@ -1,276 +1,540 @@
+ /*
+- * System-level model: Cold-path Promotion Atomicity (v2)
++ * System-level model: Cold-path Promotion Atomicity (v3, J20 sync)
+  *
+- * Verifies that at most one thread succeeds in promoting a given key from
+- * SSD (BlockDevice state) to memory-tier. No double-allocation of memory-tier
+- * slots and no lost updates where both promoters believe they succeeded.
++ * Verifies the SINGLE-KEY cold path
++ *   IDispatcher::lookup -> lookup_async -> promote_and_serve
++ *     -> evict_and_insert (evict_for_space / evict_one_clean / mt.insert)
++ *     -> pipelined SSD read into the slot
++ *     -> dm.promote_block_to_memory_tier   (IN-PLACE BlockDevice->MemoryTier)
++ * racing against itself (several lookup threads on one key), against the
++ * memory-tier demoter (dm.try_evict_to_block, THEN a separate mt.remove) and
++ * against the SSD-capacity evictor (dm.lookup/release_read, mt.remove,
++ * dm.remove). The batch_lookup in-place race is covered by the sibling model
++ * promotion-lookup-race; it is not modelled here.
+  *
+- * Models the interaction between:
+- *   - Multiple concurrent lookup threads (each calling promote_and_serve)
+- *   - The dispatch-map (reference counting + entry state)
+- *   - The memory-tier (slot allocation with bounded pool)
+- *   - A background evictor (can evict completed promotions back to SSD)
++ * v2 modelled an old remove+recreate promotion (dm.remove +
++ * create_memory_tier_entry + release_write) and an mt.remove undo on SSD-read
++ * and create failure. Neither exists on the shipped path any more.
+  *
+- * The critical race window:
+- *   Thread A: dm.lookup(key) → BlockDevice → release_read → promote_and_serve
+- *   Thread B: dm.lookup(key) → BlockDevice → release_read → promote_and_serve
+- *   Both enter promote_and_serve concurrently for the same key.
++ * Source: origin/unstable @ acd24025 (every line re-derived by symbol, J20).
++ *   components/dispatcher/src/lib.rs
++ *     lookup                        2197-2208 (lookup_async(..)? 2198)
++ *     lookup_async                  2994-3073
++ *       dm.lookup(key)              3011
++ *       NotExist -> KeyNotFound     3029
++ *       MemoryTier hit              3036-3062 (release_read 3056, Ok 3061)
++ *       BlockDevice                 3063-3068 (release_read 3064,
++ *                                   promote_and_serve(..)? 3065, Ok 3067)
++ *       dm.lookup Err -> KeyNotFound 3071
++ *     promote_and_serve             750-908
++ *       evict_and_insert            768, Err(e) => return Err(e) 789
++ *       AllocationFailed && has_drives -> staging lease 770-786
++ *       no staging buffer -> AllocationFailed 781-785
++ *       no-drives branch            795-818 (LEFT OUT)
++ *       channel_pool.checkout()?    830
++ *       pipelined read; Err -> return Err(e) 871-884 (883), NO mt.remove
++ *       staged -> Ok, no promote    893-896
++ *       promote_block_to_memory_tier 903, map_err IoError + ? 904, Ok 907
++ *     evict_one_clean               1050-1108 (try_evict_to_block 1066,
++ *                                   mt.remove 1068, true 1071, false 1107)
++ *     evict_for_space               1123-1168 (AllocationFailed 1149, 1161)
++ *     evict_and_insert              1176-1224 (mt.insert 1188, Ok 1189,
++ *                                   PoolFull 1190-1207, AlreadyExists 1208-1218)
++ *   components/dispatcher/src/background.rs
++ *     BackgroundEvictor::evictor_loop 279-370 (get_evictable_offset 323,
++ *                                   mt.remove 328, dm.remove 331)
++ *     get_evictable_offset          384-405
++ *     MemoryTierEvictor::evictor_loop 471-575 (try_evict_to_block 531,
++ *                                   mt.remove 535)
++ *   components/dispatch-map/src/lib.rs
++ *     lookup 128-174, release_read 267-285, remove 334-357,
++ *     promote_block_to_memory_tier 482-528, try_evict_to_block 548-580
++ *   components/memory-tier/src/lib.rs
++ *     insert 328-390 (AlreadyExists 357, PoolFull 363/377, Ok 389),
++ *     remove 483-514
+  *
+- * The evictor introduces a subtler race: after Thread A promotes key K,
+- * the evictor may evict K back to BlockDevice, allowing Thread B to see
+- * BlockDevice again and attempt re-promotion. This is a LEGITIMATE
+- * sequential re-promotion, not a bug — the model verifies that even with
+- * eviction, at most one mt.insert is live at any instant.
+- *
+- * Safety properties:
+- *   P1: At most one thread holds a live MT allocation per key at any
+- *       instant (no concurrent double-allocate).
+- *   P2: No double-allocation: mt.insert(key) succeeds at most once per
+- *       key lifecycle (no leaked memory-tier slots).
+- *   P3: After all threads complete, the key has write_ref == 0
+- *       (no dangling locks).
+- *   P4: A failed promoter does not leave stale state (no dangling MT slot
+- *       without a dispatch-map entry).
++ * Safety properties (v2 IDs kept where they still apply):
++ *   P1: At most one thread holds a live MT allocation per key at any instant,
++ *       and no mt.remove frees a slot an in-flight promoter still owns.
++ *   P2: mt.insert(key) succeeds at most once per key lifecycle (lifecycle
++ *       ends at mt.remove), and the dispatch-map flips BlockDevice ->
++ *       MemoryTier at most once per lifecycle, publishing the flipper's slot.
++ *   P3: After all threads complete, read_ref == 0, write_ref == 0, and no
++ *       promoter is in flight.
++ *   P4: A promoter that returns Err leaves no slot of its own behind; at the
++ *       end, a slot exists iff the entry is MemoryTier.
+  *   P5: Pool usage counter is always consistent with actual allocations.
++ *   P6: (new) lookup() of a key that is in the dispatch-map never returns
++ *       AlreadyExists (spec 001 US2 AS-2; contracts/errors.md:34 lists
++ *       AlreadyExists only for populate / prepare_store).
++ *   P7: (new) A MemoryTier hit is served from a live slot owned by the entry.
++ *   P8: (new) The slot holder's in-place promote finds its own BlockDevice
++ *       entry (never KeyNotFound/InvalidState -> IoError at 904).
+  *
+- * Component wiring modeled:
+- *   LookupThread → DispatchMap (lookup, release_read, remove, create_memory_tier_entry)
+- *   LookupThread → MemoryTier (insert, remove)
+- *   LookupThread → SSD read (abstracted as nondeterministic success/fail)
+- *   Evictor → MemoryTier (evict_lru) + DispatchMap (convert_memory_tier_to_block)
+- *
+- * Run:
+- *   spin -a promotion_atomicity.pml
+- *   cc -O2 -DSAFETY -o pan pan.c
+- *   ./pan -m200000
++ * Control hooks (all 0 = shipped code; set to 1 only by *_control.pml):
++ *   FIX_RECOVER  lookup_async recovers AlreadyExists the way batch_lookup
++ *                does (serve_concurrently_promoted, lib.rs:1349-1388).
++ *   FIX_UNDO     promote_and_serve frees its slot (mt.remove) on Err after
++ *                mt.insert succeeded (read error 883, promote error 904).
++ *   FIX_PIN      lookup_async keeps the read pin across promote_and_serve
++ *                (release_read moved after it) AND BackgroundEvictor calls
++ *                mt.remove only after dm.remove succeeded (like
++ *                IDispatcher::remove, lib.rs:3119-3125).
+  */
+ 
+ /* ---------- Parameters ---------- */
+-#define N_THREADS   3    /* Concurrent lookup threads attempting promotion */
+-#define N_KEYS      2    /* Keys that can be promoted concurrently */
+-#define POOL_CAP    2    /* Memory-tier pool capacity (forces eviction) */
++#define N_THREADS    3    /* concurrent single-key lookup threads           */
++#define N_KEYS       2    /* thread t looks up key t % N_KEYS               */
++#ifndef POOL_CAP
++#define POOL_CAP     2    /* memory-tier capacity in slots                  */
++#endif
++#ifndef N_LOOKUPS
++#define N_LOOKUPS    1    /* lookup() calls per thread (2 = >10M states)    */
++#endif
++#define MAX_ATTEMPTS 2    /* max_eviction_attempts (default 2048, bounded)  */
++#ifndef SSD_EVICTOR
++#define SSD_EVICTOR  1    /* 1 = include BackgroundEvictor (background.rs)  */
++#endif
++#ifndef FIX_RECOVER
++#define FIX_RECOVER  0
++#endif
++#ifndef FIX_UNDO
++#define FIX_UNDO     0
++#endif
++#ifndef FIX_PIN
++#define FIX_PIN      0
++#endif
++#ifndef STRICT_KNF
++#define STRICT_KNF   0    /* 1: recovery-timeout KeyNotFound also fails */
++#endif
++
++#define OWNER_NONE   0
++#define OWNER_DM     (N_THREADS + 1)   /* slot published by a MemoryTier entry */
+ 
+ /* ---------- Dispatch-map entry states ---------- */
+ mtype = { DM_EMPTY, DM_BLOCK_DEVICE, DM_MEMORY_TIER };
++/* dm.lookup results (dispatch-map lib.rs:143, 157, 158) */
++mtype = { L_NOTEXIST, L_BD, L_MT };
++/* mt.insert results (memory-tier lib.rs:357, 363, 389) */
++mtype = { I_OK, I_EXISTS, I_FULL };
++/* dm.try_evict_to_block results (dispatch-map lib.rs:553, 559, 569, 576) */
++mtype = { TE_OK, TE_ACTIVE_REFS, TE_INVALID_STATE, TE_KEY_NOT_FOUND };
++/* dm.promote_block_to_memory_tier results (dispatch-map lib.rs:496, 512, 527) */
++mtype = { PB_OK, PB_INVALID_STATE, PB_KEY_NOT_FOUND };
++/* IDispatcher::lookup results */
++mtype = { R_NONE, R_OK, R_KEY_NOT_FOUND, R_ALREADY_EXISTS, R_IO_ERROR,
++          R_ALLOC_FAILED };
+ 
+ /* ---------- Per-key dispatch-map state ---------- */
+ mtype dm_state[N_KEYS];
+ byte dm_read_ref[N_KEYS];
+-byte dm_write_ref[N_KEYS];
++byte dm_write_ref[N_KEYS];   /* not taken on the modelled paths (README) */
+ 
+ /* ---------- Per-key memory-tier state ---------- */
+ bool mt_allocated[N_KEYS];
+ byte mt_pool_used = 0;
++byte slot_owner[N_KEYS];     /* OWNER_NONE / tid+1 (in flight) / OWNER_DM */
+ 
+-/* Generation counter: tracks promotion cycles per key.
+- * Incremented each time a key completes promotion and later gets evicted.
+- * Prevents stale promoters from claiming success for a past lifecycle. */
+-byte key_gen[N_KEYS];
+-
+-/* ---------- Promotion outcome tracking ---------- */
+-byte promotion_success[N_KEYS];
++/* ---------- Ghost state ---------- */
++byte inserts_in_gen[N_KEYS];    /* P2: successful mt.insert this lifecycle */
++byte promotion_success[N_KEYS]; /* P2: BD->MT flips this lifecycle         */
++byte in_flight[N_KEYS];         /* P1: threads holding an unpublished slot */
+ 
+-/* ---------- Coordination ---------- */
+ byte threads_done = 0;
+ bool shutdown = false;
+ 
+-/* ---------- Background Evictor process ---------- */
+-proctype Evictor()
++/* ---------- mt.remove(key) by a third party (memory-tier lib.rs:483-514) */
++/* Result is ignored at every call site (`let _ =` / `.is_err() continue`). */
++inline mt_remove(k)
+ {
+-    byte victim;
++    atomic {
++        if
++        :: mt_allocated[k] ->
++            /* P1: never free a slot an in-flight promoter still owns
++             * (a slot leaked by an Err return is not in flight). */
++            assert(in_flight[k] == 0);
++            mt_allocated[k] = false;
++            mt_pool_used--;
++            slot_owner[k] = OWNER_NONE;
++            inserts_in_gen[k] = 0
++        :: else -> skip                /* KeyNotFound (lib.rs:510) */
++        fi
++    }
++}
+ 
++/* ---------- evict_one_clean (dispatcher lib.rs:1050-1108) ----------
++ * for cand in mt.oldest_keys(scan) (1065): try_evict_to_block(cand) (1066);
++ * Ok -> mt.remove(cand) as a SEPARATE step (1068), return true (1071);
++ * ActiveReferences / other Err -> next candidate (1073-1083);
++ * exhausted -> false (1107). LRU order abstracted: any resident key may be
++ * in or out of the scanned window.
++ */
++inline evict_one_clean(freed)
++{
++    freed = false;
++    c = 0;
+     do
+-    :: !shutdown ->
+-        /* Scan for an evictable key: DM_MEMORY_TIER, no refs, mt present. */
+-        atomic {
+-            victim = 0;
+-            do
+-            :: (victim < N_KEYS) ->
+-                if
+-                :: (dm_state[victim] == DM_MEMORY_TIER &&
+-                    dm_read_ref[victim] == 0 &&
+-                    dm_write_ref[victim] == 0 &&
+-                    mt_allocated[victim]) ->
+-                    break
+-                :: else ->
+-                    victim++
+-                fi
+-            :: (victim >= N_KEYS) ->
+-                break
+-            od
+-        };
+-
++    :: (c < N_KEYS) ->
+         if
+-        :: (victim < N_KEYS) ->
+-            /* Evict: mt.remove(key) + dm.convert_memory_tier_to_block.
+-             * Models evict_for_space (lib.rs:483-542). */
+-            atomic {
++        :: mt_allocated[c] ->
++            atomic {                         /* dispatch-map 548-580 */
+                 if
+-                :: (dm_state[victim] == DM_MEMORY_TIER &&
+-                    mt_allocated[victim] &&
+-                    dm_read_ref[victim] == 0 &&
+-                    dm_write_ref[victim] == 0) ->
+-                    mt_allocated[victim] = false;
+-                    mt_pool_used--;
+-                    dm_state[victim] = DM_BLOCK_DEVICE;
+-                    key_gen[victim]++
+-                :: else -> skip
++                :: dm_state[c] == DM_EMPTY -> te = TE_KEY_NOT_FOUND   /* 553 */
++                :: dm_state[c] != DM_EMPTY &&
++                   (dm_read_ref[c] != 0 || dm_write_ref[c] != 0) ->
++                    te = TE_ACTIVE_REFS                               /* 559 */
++                :: dm_state[c] == DM_MEMORY_TIER &&
++                   dm_read_ref[c] == 0 && dm_write_ref[c] == 0 ->
++                    dm_state[c] = DM_BLOCK_DEVICE;                    /* 568 */
++                    promotion_success[c] = 0;
++                    te = TE_OK
++                :: dm_state[c] == DM_BLOCK_DEVICE &&
++                   dm_read_ref[c] == 0 && dm_write_ref[c] == 0 ->
++                    te = TE_INVALID_STATE                             /* 576 */
+                 fi
+-            }
+-        :: (victim >= N_KEYS) ->
+-            /* Nothing to evict — wait for state change. */
+-            (shutdown || mt_pool_used > 0)
++            };
++            if
++            :: te == TE_OK ->
++                mt_remove(c);                                         /* 1068 */
++                freed = true;
++                break
++            :: else -> c++
++            fi
++        :: true -> c++                       /* outside the scan window */
+         fi
++    :: (c >= N_KEYS) -> break
++    od;
++    atomic { c = 0; te = TE_OK }    /* reset locals (no semantic effect) */
++}
++
++/* ---------- Memory-tier demoter ----------
++ * MemoryTierEvictor::evictor_loop (background.rs:471-575) runs the same
++ * try_evict_to_block (531) then mt.remove (535) sequence as evict_one_clean.
++ */
++proctype Evictor()
++{
++    byte c;
++    bool freed;
++    mtype te;
+ 
+-    :: shutdown ->
+-        break
++    do
++    :: !shutdown && mt_pool_used > 0 ->    /* utilization >= threshold, 495 */
++        evict_one_clean(freed);
++        freed = false
++    :: shutdown -> break
+     od
+ }
+ 
+-/* ---------- Lookup + Promote thread ---------- */
+-proctype LookupThread(byte thread_id)
++#if SSD_EVICTOR
++/* ---------- SSD-capacity evictor (background.rs:279-370) ----------
++ * Runs only when SSD utilization >= ssd_eviction_threshold (0.9 default,
++ * idispatcher.rs:110; started at lib.rs:2038-2055).
++ */
++proctype SsdEvictor()
+ {
+-    byte my_key;
+-    byte my_gen;
+-    bool got_block_device;
+-    bool dm_remove_ok;
+-    bool mt_insert_ok;
+-    bool create_entry_ok;
+-    byte attempt;
+-
+-    /* Each thread attempts to promote one key.
+-     * Thread assignment: thread_id % N_KEYS → allows multiple threads
+-     * to target the same key (the interesting race scenario). */
+-    my_key = thread_id % N_KEYS;
++    byte k;
++    bool bd;
++    bool removed;
+ 
+-    /* Allow up to 2 attempts (retry after eviction re-enables the key). */
+-    attempt = 0;
+     do
+-    :: (attempt < 2) ->
+-        attempt++;
+-
+-        /* Phase 1: dm.lookup(key) — wait for write_ref == 0, then take read_ref. */
+-        got_block_device = false;
++    :: !shutdown ->
++        if
++        :: k = 0
++        :: k = N_KEYS - 1
++        fi;
++        /* get_evictable_offset (384-405): dm.lookup (388) + release_read
++         * (390/395/399). The pin is taken and dropped in one step. */
++        bd = false;
+         atomic {
++            (dm_write_ref[k] == 0);
+             if
+-            :: (dm_state[my_key] == DM_BLOCK_DEVICE && dm_write_ref[my_key] == 0) ->
+-                dm_read_ref[my_key]++;
+-                got_block_device = true;
+-                my_gen = key_gen[my_key]
+-            :: (dm_state[my_key] != DM_BLOCK_DEVICE) ->
+-                skip
+-            :: (dm_write_ref[my_key] > 0) ->
+-                skip
++            :: dm_state[k] == DM_BLOCK_DEVICE -> bd = true   /* Some(offset) */
++            :: else -> skip                                  /* None */
+             fi
+         };
+-
+         if
+-        :: !got_block_device -> goto try_next
+-        :: got_block_device -> skip
++        :: bd ->
++#if FIX_PIN
++            /* control: dm.remove first, mt.remove only on success */
++            atomic {
++                removed = false;
++                if
++                :: dm_state[k] != DM_EMPTY &&
++                   dm_read_ref[k] == 0 && dm_write_ref[k] == 0 ->
++                    dm_state[k] = DM_EMPTY;
++                    promotion_success[k] = 0;
++                    removed = true
++                :: else -> skip
++                fi
++            };
++            if
++            :: removed -> mt_remove(k)
++            :: else -> skip
++            fi
++#else
++            mt_remove(k);                    /* 328 "no-op if not present" */
++            atomic {                         /* 331 dm.remove (334-357) */
++                if
++                :: dm_state[k] != DM_EMPTY &&
++                   dm_read_ref[k] == 0 && dm_write_ref[k] == 0 ->
++                    dm_state[k] = DM_EMPTY;
++                    promotion_success[k] = 0
++                :: else -> skip              /* ActiveReferences -> continue */
++                fi
++            }
++#endif
++        :: else -> skip
+         fi;
++        atomic { k = 0; bd = false; removed = false }  /* reset locals */
++    :: shutdown -> break
++    od
++}
++#endif
+ 
+-        /* Phase 2: release_read(key) before entering promote_and_serve. */
+-        atomic {
+-            assert(dm_read_ref[my_key] > 0);
+-            dm_read_ref[my_key]--
+-        };
++/* ---------- IDispatcher::lookup (single key) ---------- */
++proctype LookupThread(byte tid)
++{
++    byte k;
++    byte n;
++    byte c;
++    byte tries;
++    byte ea;
++    bool freed;
++    bool alloc_failed;
++    mtype te;
++    mtype lres;
++    mtype ins;
++    mtype pres;
++    mtype ret;
+ 
+-        /* === RACE WINDOW: key has no refs, multiple threads can proceed === */
++    k = tid % N_KEYS;
++    n = 0;
++    do
++    :: (n < N_LOOKUPS) ->
++        n++;
++        ret = R_NONE;
+ 
+-        /* Phase 3: mt.insert(key) — allocate memory-tier slot.
+-         * Protected by mt's internal keyed lookup — AlreadyExists if present. */
+-        mt_insert_ok = false;
++        /* dm.lookup(key): dispatcher 3011 -> dispatch-map 128-174.
++         * Waits for write_ref == 0 (Timeout left out), takes read_ref. */
+         atomic {
++            (dm_write_ref[k] == 0);
+             if
+-            :: (!mt_allocated[my_key] && mt_pool_used < POOL_CAP) ->
+-                mt_allocated[my_key] = true;
+-                mt_pool_used++;
+-                mt_insert_ok = true
+-            :: (mt_allocated[my_key]) ->
+-                /* AlreadyExists — another thread already inserted. */
+-                mt_insert_ok = false
+-            :: (!mt_allocated[my_key] && mt_pool_used >= POOL_CAP) ->
+-                /* PoolFull — eviction needed but we don't retry inline. */
+-                mt_insert_ok = false
++            :: dm_state[k] == DM_EMPTY -> lres = L_NOTEXIST          /* 143 */
++            :: dm_state[k] == DM_BLOCK_DEVICE ->
++                dm_read_ref[k]++; lres = L_BD                        /* 157 */
++            :: dm_state[k] == DM_MEMORY_TIER ->
++                dm_read_ref[k]++; lres = L_MT                        /* 158 */
+             fi
+         };
+ 
+         if
+-        :: !mt_insert_ok -> goto try_next
+-        :: mt_insert_ok -> skip
+-        fi;
++        :: lres == L_NOTEXIST ->
++            ret = R_KEY_NOT_FOUND                                    /* 3029 */
+ 
+-        /* P1 instant check: we are sole holder of this mt slot. */
+-        assert(mt_allocated[my_key]);
++        :: lres == L_MT ->
++            /* serve_memory_tier_to_gpu 3048-3055, under the read pin. */
++            assert(mt_allocated[k] && slot_owner[k] == OWNER_DM);    /* P7 */
++            atomic {                                                 /* 3056 */
++                assert(dm_read_ref[k] > 0);
++                dm_read_ref[k]--
++            };
++            ret = R_OK                                               /* 3061 */
+ 
+-        /* Phase 4: SSD read (nondeterministic success/failure). */
+-        if
+-        :: true -> skip  /* SSD read succeeds */
+-        :: true ->
+-            /* SSD read fails — undo mt.insert to avoid P4 violation. */
+-            atomic {
+-                mt_allocated[my_key] = false;
+-                mt_pool_used--
++        :: lres == L_BD ->
++#if !FIX_PIN
++            atomic {                                                 /* 3064 */
++                assert(dm_read_ref[k] > 0);
++                dm_read_ref[k]--
+             };
+-            goto try_next
+-        fi;
++#endif
++            /* ===== promote_and_serve (750-908) ===== */
++            /* evict_and_insert (1176-1224) */
++            alloc_failed = false;
++            tries = 0;
++            do
++            :: true ->
++                /* evict_for_space (1123-1168): while used + needed > cap */
++                ea = 0;
++                do
++                :: (mt_pool_used >= POOL_CAP) ->
++                    ea++;
++                    if
++                    :: ea > MAX_ATTEMPTS -> alloc_failed = true; break   /* 1149 */
++                    :: else -> skip
++                    fi;
++                    evict_one_clean(freed);                              /* 1157 */
++                    if
++                    :: !freed -> alloc_failed = true; break              /* 1161 */
++                    :: else -> skip
++                    fi
++                :: else -> break                                         /* 1167 */
++                od;
++                if
++                :: alloc_failed -> break
++                :: else -> skip
++                fi;
++
++                atomic {                                       /* mt.insert 1188 */
++                    if
++                    :: mt_allocated[k] -> ins = I_EXISTS                  /* 357 */
++                    :: !mt_allocated[k] && mt_pool_used >= POOL_CAP ->
++                        ins = I_FULL                                      /* 363 */
++                    :: !mt_allocated[k] && mt_pool_used < POOL_CAP ->
++                        assert(in_flight[k] == 0);                        /* P1 */
++                        assert(inserts_in_gen[k] == 0);                   /* P2 */
++                        inserts_in_gen[k] = 1;
++                        mt_allocated[k] = true;
++                        mt_pool_used++;
++                        slot_owner[k] = tid + 1;
++                        in_flight[k]++;
++                        ins = I_OK                                        /* 389 */
++                    fi
++                };
++                if
++                :: ins == I_OK -> break                                   /* 1189 */
++                :: ins == I_EXISTS -> break                               /* 1217 */
++                :: ins == I_FULL ->                                 /* 1190-1207 */
++                    tries++;
++                    if
++                    :: tries >= MAX_ATTEMPTS -> alloc_failed = true; break  /* 1193 */
++                    :: else ->
++                        evict_one_clean(freed);                           /* 1201 */
++                        if
++                        :: !freed -> alloc_failed = true; break           /* 1202 */
++                        :: else -> skip
++                        fi
++                    fi
++                fi
++            od;
+ 
+-        /* Phase 5: dm.remove(key) — remove old BlockDevice entry.
+-         * Error ignored in real code (let _ = dm.remove(key)). */
+-        atomic {
+             if
+-            :: (dm_state[my_key] == DM_BLOCK_DEVICE &&
+-                dm_read_ref[my_key] == 0 && dm_write_ref[my_key] == 0) ->
+-                dm_state[my_key] = DM_EMPTY
+-            :: (dm_state[my_key] == DM_EMPTY) ->
+-                skip  /* Already removed — fine */
+-            :: else ->
+-                skip  /* Remove failed — ignored */
+-            fi
+-        };
++            :: alloc_failed ->
++                /* AllocationFailed && has_drives (770): staging lease. */
++                if
++                :: ret = R_OK              /* staged serve, Ok at 895       */
++                :: ret = R_IO_ERROR        /* staged read error, 883        */
++                :: ret = R_ALLOC_FAILED    /* no staging buffer, 781-785    */
++                fi
+ 
+-        /* Phase 6: dm.create_memory_tier_entry(key) — register as MemoryTier.
+-         * Acquires write ref. Fails with AlreadyExists if key exists. */
+-        create_entry_ok = false;
+-        atomic {
++            :: !alloc_failed && ins == I_EXISTS ->
++                /* Err(AlreadyExists) 1217 -> `Err(e) => return Err(e)` 789
++                 * -> `?` at 3065 -> `?` at 2198: reaches the caller. */
++                ret = R_ALREADY_EXISTS
++
++            :: !alloc_failed && ins == I_OK ->
++                /* channel checkout 830 + pipelined SSD read 871-884 */
++                if
++                :: skip                                   /* read Ok */
++                :: ret = R_IO_ERROR                       /* return Err(e) 883 */
++                fi;
++                if
++                :: ret == R_NONE ->
++                    /* promote_block_to_memory_tier 903 (dispatch-map 482-528) */
++                    atomic {
++                        if
++                        :: dm_state[k] == DM_BLOCK_DEVICE ->
++                            assert(slot_owner[k] == tid + 1);              /* P1 */
++                            assert(promotion_success[k] == 0);             /* P2 */
++                            dm_state[k] = DM_MEMORY_TIER;                  /* 504 */
++                            slot_owner[k] = OWNER_DM;
++                            promotion_success[k]++;
++                            in_flight[k]--;
++                            pres = PB_OK                                   /* 527 */
++                        :: dm_state[k] == DM_MEMORY_TIER ->
++                            pres = PB_INVALID_STATE                        /* 512 */
++                        :: dm_state[k] == DM_EMPTY ->
++                            pres = PB_KEY_NOT_FOUND                        /* 496 */
++                        fi
++                    };
++                    assert(pres == PB_OK);                                 /* P8 */
++                    if
++                    :: pres == PB_OK -> ret = R_OK                         /* 907 */
++                    :: else -> ret = R_IO_ERROR                            /* 904 */
++                    fi
++                :: else -> skip
++                fi;
++                if
++                :: ret != R_OK ->
++#if FIX_UNDO
++                    /* control: free our own slot before returning Err */
++                    atomic {
++                        if
++                        :: slot_owner[k] == tid + 1 ->
++                            mt_allocated[k] = false;
++                            mt_pool_used--;
++                            slot_owner[k] = OWNER_NONE;
++                            inserts_in_gen[k] = 0
++                        :: else -> skip
++                        fi;
++                        in_flight[k]--
++                    };
++#else
++                    atomic { in_flight[k]-- };
++#endif
++                    /* P4: an Err return leaves no slot of ours behind */
++                    assert(slot_owner[k] != tid + 1)
++                :: else -> skip
++                fi
++            fi;
++
++#if FIX_RECOVER
++            /* control: serve_concurrently_promoted (1349-1388) */
+             if
+-            :: (dm_state[my_key] == DM_EMPTY) ->
+-                dm_state[my_key] = DM_MEMORY_TIER;
+-                dm_write_ref[my_key] = 1;
+-                create_entry_ok = true
+-            :: (dm_state[my_key] != DM_EMPTY) ->
+-                /* AlreadyExists — another thread won. */
+-                create_entry_ok = false
+-            fi
+-        };
++            :: ret == R_ALREADY_EXISTS ->
++                do
++                :: atomic {                                   /* dm.lookup 1361 */
++                       (dm_write_ref[k] == 0);
++                       if
++                       :: dm_state[k] == DM_EMPTY -> lres = L_NOTEXIST
++                       :: dm_state[k] == DM_BLOCK_DEVICE ->
++                           dm_read_ref[k]++; lres = L_BD
++                       :: dm_state[k] == DM_MEMORY_TIER ->
++                           dm_read_ref[k]++; lres = L_MT
++                       fi
++                   };
++                   if
++                   :: lres == L_MT ->
++                       assert(mt_allocated[k] && slot_owner[k] == OWNER_DM); /* P7 */
++                       atomic { dm_read_ref[k]-- };
++                       ret = R_OK; break                       /* 1363-1367 */
++                   :: lres == L_BD ->
++                       atomic { dm_read_ref[k]-- };            /* 1372 */
++                       if
++                       :: skip                                 /* back off, retry */
++                       :: ret = R_KEY_NOT_FOUND; break         /* 5 s timeout 1373 */
++                       fi
++                   :: lres == L_NOTEXIST ->
++                       ret = R_KEY_NOT_FOUND; break            /* 1385 */
++                   fi
++                od
++            :: else -> skip
++            fi;
++#endif
+ 
+-        if
+-        :: !create_entry_ok ->
+-            /* Undo mt.insert to avoid dangling MT slot (P4). */
+-            atomic {
+-                mt_allocated[my_key] = false;
+-                mt_pool_used--
++#if FIX_PIN
++            atomic {                     /* control: release_read after promote */
++                assert(dm_read_ref[k] > 0);
++                dm_read_ref[k]--
+             };
+-            goto try_next
+-        :: create_entry_ok -> skip
++#endif
++            skip
+         fi;
+ 
+-        /* Phase 7: dm.release_write(key) — promotion complete. */
+-        atomic {
+-            assert(dm_write_ref[my_key] == 1);
+-            dm_write_ref[my_key] = 0
+-        };
++        assert(ret != R_ALREADY_EXISTS);                                   /* P6 */
++        /* KeyNotFound only for an absent entry (3029), or the recovery
++         * timeout in the control (1373). */
++        assert(ret != R_KEY_NOT_FOUND || lres == L_NOTEXIST ||
++               (FIX_RECOVER && !STRICT_KNF));
++        /* every path sets a result */
++        assert(ret != R_NONE);
++        /* reset locals (state-space hygiene, no semantic effect) */
++        atomic { ret = R_NONE; lres = L_NOTEXIST; ins = I_OK; pres = PB_OK;
++                 te = TE_OK; c = 0; tries = 0; ea = 0; freed = false;
++                 alloc_failed = false }
+ 
+-        /* P1: Record successful promotion. */
+-        promotion_success[my_key]++;
+-        goto done
+-
+-try_next:
+-        skip
+-    :: (attempt >= 2) -> break
++    :: (n >= N_LOOKUPS) -> break
+     od;
+ 
+-done:
+     threads_done++
+ }
+ 
+@@ -279,8 +543,9 @@
+ {
+     byte k;
+     byte t;
++    byte mt_count;
+ 
+-    /* Set up initial state: all keys in BlockDevice state. */
++    /* All keys start as persisted BlockDevice entries (demoted earlier). */
+     d_step {
+         k = 0;
+         do
+@@ -289,61 +554,57 @@
+             dm_read_ref[k] = 0;
+             dm_write_ref[k] = 0;
+             mt_allocated[k] = false;
++            slot_owner[k] = OWNER_NONE;
+             promotion_success[k] = 0;
+-            key_gen[k] = 0;
++            inserts_in_gen[k] = 0;
++            in_flight[k] = 0;
+             k++
+         :: (k >= N_KEYS) -> break
+         od
+     };
+ 
+-    /* Start evictor. */
+-    run Evictor();
+-
+-    /* Start concurrent lookup threads. */
+-    t = 0;
+-    do
+-    :: (t < N_THREADS) ->
+-        run LookupThread(t);
+-        t++
+-    :: (t >= N_THREADS) -> break
+-    od;
++    atomic {
++        run Evictor();
++#if SSD_EVICTOR
++        run SsdEvictor();
++#endif
++        t = 0;
++        do
++        :: (t < N_THREADS) ->
++            run LookupThread(t);
++            t++
++        :: (t >= N_THREADS) -> break
++        od
++    };
+ 
+-    /* Wait for all threads to complete. */
+     (threads_done == N_THREADS);
+     shutdown = true;
+-
+-    /* Wait for evictor to exit. */
+     timeout;
+ 
+-    /* Final invariant checks. */
+     d_step {
+         k = 0;
+         do
+         :: (k < N_KEYS) ->
+-            /* P3: No dangling write refs after all threads complete. */
+-            assert(dm_write_ref[k] == 0);
+-            assert(dm_read_ref[k] == 0);
+-
+-            /* P2/P4: mt_allocated consistent with dm_state. */
++            assert(dm_write_ref[k] == 0);                           /* P3 */
++            assert(dm_read_ref[k] == 0);                            /* P3 */
++            assert(in_flight[k] == 0);                              /* P3 */
+             if
+-            :: (dm_state[k] == DM_MEMORY_TIER) ->
+-                assert(mt_allocated[k] == true)
++            :: (dm_state[k] == DM_MEMORY_TIER) ->                   /* P2/P4 */
++                assert(mt_allocated[k] && slot_owner[k] == OWNER_DM)
+             :: (dm_state[k] != DM_MEMORY_TIER) ->
+-                assert(mt_allocated[k] == false)
++                assert(!mt_allocated[k])
+             fi;
+-
+             k++
+         :: (k >= N_KEYS) -> break
+         od;
+ 
+-        /* P5: Pool counter matches actual allocations. */
+-        byte mt_count = 0;
++        mt_count = 0;                                               /* P5 */
+         k = 0;
+         do
+         :: (k < N_KEYS) ->
+             if
+             :: mt_allocated[k] -> mt_count++
+-            :: !mt_allocated[k] -> skip
++            :: else -> skip
+             fi;
+             k++
+         :: (k >= N_KEYS) -> break
+diff -ruN '--exclude=*.trail' '--exclude=*.log' '--exclude=*.txt' '--exclude=trails' '--exclude=control' '--exclude=bug2' '--exclude=RESULT.md' orig/promotion-atomicity/README.md promotion-atomicity/README.md
+--- orig/promotion-atomicity/README.md	2026-10-17 00:05:41.874414382 -0700
++++ promotion-atomicity/README.md	2026-10-17 01:16:03.013243541 -0700
+@@ -2,109 +2,172 @@
+ 
+ ## Scope
+ 
+-Whole system (LookupThread → DispatchMap → MemoryTier → Evictor)
++Whole system, single-key path: `IDispatcher::lookup` -> `lookup_async` -> `promote_and_serve`
++-> DispatchMap / MemoryTier, racing the memory-tier demoter and the SSD-capacity evictor.
+ 
+ ## Description
+ 
+-Verifies that at most one thread succeeds in promoting a given key from SSD
+-(BlockDevice state in the dispatch-map) to the DRAM memory-tier. When multiple
+-concurrent `batch_lookup` or single `lookup` calls discover the same key is cold
+-(on SSD), they race to promote it. The model verifies that the dispatch-map's
+-reference counting, entry-state transitions, and the memory-tier's
+-`AlreadyExists` guard ensure exactly-once promotion with no leaked slots.
+-
+-Includes a background evictor that can demote promoted keys back to BlockDevice
+-state, creating the scenario where a key that was previously promoted becomes
+-promotable again. The model verifies that even with eviction-induced re-promotion,
+-at most one thread holds a live memory-tier allocation at any instant.
++Checks that when a single-key `lookup` finds a key cold (BlockDevice in the dispatch-map)
++and promotes it to the DRAM memory-tier, the promotion is atomic. That means:
++
++- at most one thread holds the key's slot;
++- a slot is freed only when nobody still uses it;
++- a failed promoter leaves nothing behind;
++- the caller gets a correct result.
++
++The shipped promotion is **in place**. `promote_and_serve` (dispatcher `lib.rs:750-908`) takes
++a slot with `evict_and_insert` (`mt.insert`) and reads the SSD into it. It then flips the entry
++with `dm.promote_block_to_memory_tier` (dispatch-map `lib.rs:482-528`).
++
++The memory-tier demoter (`evict_one_clean`, `lib.rs:1050-1108`; `MemoryTierEvictor`,
++`background.rs:471-575`) calls `dm.try_evict_to_block`, then calls `mt.remove` as a separate
++step. The SSD-capacity evictor (`BackgroundEvictor`, `background.rs:279-370`) calls `mt.remove`
++before `dm.remove`.
++
++v2 of this model encoded an older remove+recreate promotion
++(`dm.remove` + `create_memory_tier_entry` + `release_write`). It also undid `mt.insert` on
++failure. Neither exists on the shipped path (J20 sync). The `batch_lookup` in-place race is
++covered by the sibling model `promotion-lookup-race`.
+ 
+ ## Properties Verified
+ 
+-| ID | Property | Type |
+-|----|----------|------|
+-| P1 | At most one thread holds a live MT allocation per key at any instant (no concurrent double-allocate) | Safety |
+-| P2 | No double-allocation: `mt.insert(key)` succeeds at most once per key lifecycle | Safety |
+-| P3 | After all threads complete, `write_ref = 0` and `read_ref = 0` (no dangling locks) | Safety |
+-| P4 | A failed promoter cleans up its MT allocation (no dangling slot without dm entry) | Safety |
+-| P5 | Pool usage counter is always consistent with actual allocations | Safety |
++| ID | Property | Type | Where asserted |
++|----|----------|------|----------------|
++| P1 | At most one thread holds a live MT allocation per key; no `mt.remove` frees a slot an in-flight promoter still owns; the flip publishes the flipper's own slot | Safety | `mt.insert` branch, `mt_remove` inline, promote flip |
++| P2 | `mt.insert(key)` succeeds at most once per key lifecycle, and the BlockDevice->MemoryTier flip happens at most once per lifecycle (`promotion_success[]` asserted) | Safety | `mt.insert` branch, promote flip, final check |
++| P3 | After all threads complete: `read_ref = 0`, `write_ref = 0`, no promoter in flight | Safety | init final check |
++| P4 | A promoter that returns `Err` leaves no slot of its own behind; at the end, slot exists iff entry is MemoryTier | Safety | after Err return, final check |
++| P5 | Pool usage counter equals actual allocations | Safety | final check |
++| P6 | (new) `lookup` of a key present in the dispatch-map never returns `AlreadyExists` (spec 001 US2 AS-2, `spec.md:61`; `contracts/errors.md:34`) | Safety | end of every lookup |
++| P7 | (new) A MemoryTier hit is served from a live slot owned by the entry | Safety | MT-hit branch |
++| P8 | (new) The slot holder's in-place promote finds its own BlockDevice entry (no `IoError("promote transition failed")` at 904) | Safety | after promote |
++
++Also asserted on every lookup: the result is set, and `KeyNotFound` occurs only when
++`dm.lookup` returned `NotExist`.
+ 
+ ## System Abstraction
+ 
+-| Real component | Promela process |
+-|----------------|-----------------|
+-| `batch_lookup` cold-path threads / single `lookup` | `LookupThread(id)` × N_THREADS |
+-| Background evictor (`evict_for_space` / `BackgroundEvictor`) | `Evictor()` |
+-| `DispatchMapComponent::lookup()` (wait + read_ref++) | atomic: check state + inc read_ref |
+-| `DispatchMapComponent::release_read()` | atomic: dec read_ref |
+-| `DispatchMapComponent::remove()` (ref-checked) | atomic: check refs + set DM_EMPTY |
+-| `DispatchMapComponent::create_memory_tier_entry()` | atomic: check empty + create entry |
+-| `DispatchMapComponent::release_write()` | atomic: set write_ref = 0 |
+-| `DispatchMapComponent::convert_memory_tier_to_block()` | Evictor: set DM_BLOCK_DEVICE |
+-| Memory-tier `insert(key)` | atomic: check !allocated + pool < cap |
+-| Memory-tier `remove(key)` / `evict_lru()` | Evictor: clear mt_allocated, dec pool |
+-| SSD read (pipelined NVMe + CUDA DMA) | Nondeterministic success/failure |
++| Real component | Promela process / construct |
++|----------------|-----------------------------|
++| `IDispatcher::lookup` / `lookup_async` (single key) | `LookupThread(tid)` x N_THREADS, N_LOOKUPS calls each |
++| `promote_and_serve` / `evict_and_insert` / `evict_for_space` | inline in `LookupThread` |
++| `evict_one_clean` (also used by `MemoryTierEvictor::evictor_loop`, same try_evict -> mt.remove order) | `evict_one_clean` inline; `Evictor()` |
++| `BackgroundEvictor::evictor_loop` (SSD capacity) | `SsdEvictor()` (`-DSSD_EVICTOR=0` to drop it) |
++| `DispatchMapComponent::lookup` | atomic: wait write_ref==0, read_ref++, classify |
++| `release_read` | atomic: read_ref-- |
++| `promote_block_to_memory_tier` | atomic: BD -> MT in place, else InvalidState / KeyNotFound |
++| `try_evict_to_block` | atomic: refs==0 && MT -> BD, else ActiveReferences / InvalidState / KeyNotFound |
++| `dm.remove` | atomic: refs==0 -> EMPTY, else ActiveReferences |
++| `MemoryTierComponent::insert` | atomic: AlreadyExists / PoolFull / Ok |
++| `MemoryTierComponent::remove` | `mt_remove` inline |
++| SSD read (pipelined NVMe + H2D) and channel checkout | nondeterministic Ok / Err |
++| Staging serve (`AllocationFailed && has_drives`) | nondeterministic Ok / IoError / AllocationFailed (no buffer) |
+ 
+ ## Assumptions / Stubs
+ 
+-- **SSD read** — nondeterministic success/failure. The pipelined DMA is irrelevant to promotion atomicity.
+-- **GPU DMA** — not modeled (irrelevant to the atomicity property).
+-- **Multiple drives** — abstracted; the model focuses on per-key serialization.
+-- **Dispatch-map condvar** — wait-for-write_ref==0 modeled as atomic guard (skip if can't proceed, modeling timeout path).
+-- **Pool capacity** — bounded at POOL_CAP=2 to force eviction and test re-promotion.
+-- **Generation counter** — tracks eviction cycles; prevents conflating separate promotion lifecycles.
++- **SSD read / channel checkout**: either one can fail. Both fail after `mt.insert`, so they are one branch.
++- **Staging pool**: when the tier cannot give a slot, the staged serve is abstracted to its three results. It never touches the slot or the entry.
++- **LRU order** (`mt.oldest_keys`): abstracted. Any resident key may be inside or outside the scan window.
++- **`max_eviction_attempts`**: bounded to `MAX_ATTEMPTS = 2` (default 2048, `idispatcher.rs:115`).
++- **Condvar wait / Timeout**: `dm.lookup` blocks until `write_ref == 0`. Timeout is left out. No `write_ref` is taken on the modelled paths.
++- **SSD evictor trigger**: runs only at SSD utilization >= `ssd_eviction_threshold` (0.9, `idispatcher.rs:110`). The model lets it run at any time.
++- **Control hooks** (`FIX_RECOVER`, `FIX_UNDO`, `FIX_PIN`): all default to 0, which is the shipped code. Only `promotion_atomicity_control.pml` sets them. See the `.pml` header.
++
++## Returned values
++
++Every value the modelled API returns on the modelled paths (J20, acd24025):
++
++| # | Value | Code line(s) | Modelled as | Checked by |
++|---|-------|--------------|-------------|------------|
++| M1 | `lookup` Ok, MemoryTier hit | lib.rs:3061 | `ret = R_OK` | P7, ret set |
++| M2 | `lookup` Ok, promoted | lib.rs:907 -> 3067 | `ret = R_OK` | P1, P2, P8 |
++| M3 | `lookup` Ok, staged (uncached) | lib.rs:893-896 | `ret = R_OK` | P4/P5 (no slot), ret set |
++| M4 | `KeyNotFound` (NotExist) | lib.rs:3029 | `ret = R_KEY_NOT_FOUND` | KeyNotFound-only-if-NotExist |
++| M5 | `AlreadyExists` | lib.rs:1217 -> 789 -> 3065 `?` -> 2198 `?` | `ret = R_ALREADY_EXISTS` | **P6** |
++| M6 | `IoError`, SSD read / channel checkout after insert | lib.rs:883, 830 | `ret = R_IO_ERROR` | **P4** |
++| M7 | `IoError("promote transition failed")` | lib.rs:903-904 | `pres != PB_OK -> R_IO_ERROR` | **P8**, P4 |
++| M8 | `AllocationFailed` (no staging buffer) | lib.rs:781-785 | `ret = R_ALLOC_FAILED` | ret set, P5 |
++| M9 | `dm.lookup` NotExist / BlockDevice / MemoryTier | dispatch-map lib.rs:143, 157, 158 | `lres` | P7, M4 check |
++| M10 | `mt.insert` Ok / AlreadyExists / PoolFull | memory-tier lib.rs:389, 357, 363 | `ins` | P1, P2 |
++| M11 | `evict_for_space` / `evict_and_insert` AllocationFailed | lib.rs:1149, 1161, 1193, 1202 | `alloc_failed` | P5 |
++| M12 | `try_evict_to_block` Ok / ActiveReferences / InvalidState / KeyNotFound | dispatch-map lib.rs:569, 559, 573/576, 553 | `te` | P1 (mt_remove), P5 |
++| M13 | `evict_one_clean` true / false | lib.rs:1071, 1107 | `freed` | P5 |
++| M14 | `promote_block_to_memory_tier` Ok / InvalidState / KeyNotFound | dispatch-map lib.rs:527, 512, 496 | `pres` | P8 |
++| M15 | `dm.remove` Ok / ActiveReferences / KeyNotFound (SSD evictor) | dispatch-map lib.rs:356, 342, 339 | branch in `SsdEvictor` | P3, P8 |
++| M16 | `get_evictable_offset` Some / None | background.rs:391, 396/400/402 | `bd` | P1 |
++
++### Left out
++
++| # | Value | Code line(s) | Why |
++|---|-------|--------------|-----|
++| L1 | `NotInitialized` | lib.rs:2999, 3004, 3009, 3016, 2203, 853 | wiring / init, before or outside the race |
++| L2 | `dm.lookup` Err (Timeout, RefCountOverflow) -> `KeyNotFound` | dispatch-map lib.rs:139, 150; lib.rs:3071 | no `write_ref` holder on modelled paths; refcount bounded |
++| L3 | `MismatchSize` -> `InvalidParameter` | lib.rs:3030-3034 | `DispatchMapComponent::lookup` never returns it (dispatch-map lib.rs:143-162) |
++| L4 | MT-hit serve error, integrity-check CRC `IoError` | lib.rs:3048-3061, 3040-3045 | GPU DMA failure, feature-gated CRC; no tier state change |
++| L5 | `stream_synchronize` `IoError` | lib.rs:2205-2206 | `lookup_async` returns a null stream on every path (3061, 3067), so it is never called |
++| L6 | No-drives branch: `IoError` 801/816, ignored `create_memory_tier_entry`/`release_write` results | lib.rs:795-818 | test-only mode (no data drives) |
++| L7 | `mt.insert` InvalidSize / NotInitialized / PoolFull(377) -> `AllocationFailed` | memory-tier lib.rs:330, 335, 369, 377; lib.rs:1219-1221 | size 0 / init / unreachable after `can_allocate` |
++| L8 | `promote_block_to_memory_tier` InvalidSize | dispatch-map lib.rs:489 | size 0 |
++| L9 | `release_read` Err (KeyNotFound, RefCountUnderflow) | dispatch-map lib.rs:272, 275; ignored at lib.rs:3056, 3064, background.rs:390/395/399 | result discarded (`let _`) |
++| L10 | `mt.remove` Ok / KeyNotFound | memory-tier lib.rs:513, 510; ignored at lib.rs:1068, background.rs:328, 535 | result discarded; modelled as no-op, value not asserted |
++| L11 | tier counters / eviction events | lib.rs:905, 3059, 3066, 1216, 1069-1070, 1074, 1082, 1106 | telemetry; single-key `lookup` has no `served_by` label (that is `batch_lookup`, sibling model) |
++| L12 | `em.remove_extent` result, extent reuse | background.rs:348 | extent manager not modelled (see RESULT.md, C3 consequence) |
++
++### Summary
++
++| Model | Status | Divergences | Verification | States | Unreached | Returned values |
++|-------|--------|-------------|--------------|--------|-----------|-----------------|
++| promotion-atomicity | UPDATED | remove+recreate -> in-place promote; no undo on Err; evict = try_evict_to_block then mt.remove; SSD evictor added; AlreadyExists propagation | **FAIL** (P6, candidate bugs C1-C3); control PASS | 4,289 (shipped, stops at 1st error); 2,800,356 (control) | control: 18 of 320 in LookupThread (inline evict_one_clean copy and the R_IO_ERROR-after-promote branch, unreachable by P8) | 16 / 12 / 0 |
+ 
+ ## Running
+ 
+ ```bash
+-cd modelling/spin/promotion-atomicity
+-
+-# Safety verification (assertions + invalid end-states)
+-make
+-
+-# Or step by step:
+-spin -a promotion_atomicity.pml
+-cc -O2 -DSAFETY -o pan pan.c
+-./pan -m200000
+-
+-# Liveness/deadlock check
++make clean && make safety     # shipped code
+ make liveness
+-
+-# Clean generated files
+-make clean
++make clean && make safety MODEL=promotion_atomicity_control.pml   # minimal-fix control
++spin -DSSD_EVICTOR=0 -a promotion_atomicity.pml                   # without SSD evictor
+ ```
+ 
+ ## Tuning the Model
+ 
+-| Parameter  | Value | Rationale                                           |
+-|------------|-------|-----------------------------------------------------|
+-| N_THREADS  | 3     | Thread 0 and 2 race on key 0; thread 1 on key 1    |
+-| N_KEYS     | 2     | Two keys verify per-key isolation                   |
+-| POOL_CAP   | 2     | Forces eviction under contention                    |
+-
+-Why these are sufficient:
+-1. The promotion protocol is per-key — if safe for 2 competing threads on one key, it's safe for N.
+-2. Two keys verify that per-key state doesn't leak across keys.
+-3. Three threads + evictor create 4-way interleavings covering double-race, evict-then-retry, and uncontested patterns.
+-4. POOL_CAP = N_KEYS means the evictor must fire to allow re-promotion.
+-
+-To explore larger state spaces:
+-```bash
+-spin -DN_THREADS=4 -DN_KEYS=3 -a promotion_atomicity.pml
+-cc -O2 -DSAFETY -DMEMLIM=8192 -o pan pan.c
+-./pan -m500000
+-```
++| Parameter  | Value | Rationale |
++|------------|-------|-----------|
++| N_THREADS  | 3 | threads 0 and 2 race on key 0; thread 1 on key 1 |
++| N_KEYS     | 2 | per-key isolation + cross-key eviction pressure |
++| POOL_CAP   | 2 | `= N_KEYS`; `-DPOOL_CAP=1` exercises PoolFull / staging (control passes at 9.06M states) |
++| N_LOOKUPS  | 1 | 2 gives >74M states for the control (8 GB MEMLIM hit, not completed) |
++| MAX_ATTEMPTS | 2 | bounds the eviction retry loops |
+ 
+ ## Correspondence to Source Code
+ 
++All lines are re-derived by symbol at origin/unstable @ acd24025.
++
+ | Model location | Source file | Line range |
+ |----------------|-------------|------------|
+-| `LookupThread` / dm.lookup | `components/dispatch-map/src/lib.rs` | 143–183 |
+-| `LookupThread` / release_read before promote | `components/dispatcher/src/lib.rs` | 1349 |
+-| `LookupThread` / mt.insert | `components/dispatcher/src/lib.rs` | 1489 |
+-| `LookupThread` / dm.remove | `components/dispatcher/src/lib.rs` | 1542 |
+-| `LookupThread` / create_memory_tier_entry | `components/dispatcher/src/lib.rs` | 1543–1553 |
+-| `LookupThread` / release_write | `components/dispatcher/src/lib.rs` | 1559 |
+-| `Evictor` / evict_for_space | `components/dispatcher/src/lib.rs` | 483–542 |
+-| `Evictor` / convert_memory_tier_to_block | `components/interfaces/src/idispatch_map.rs` | 155 |
+-| dm.remove (ref check) | `components/dispatch-map/src/lib.rs` | 336–354 |
+-| dm.create_memory_tier_entry (AlreadyExists) | `components/dispatch-map/src/lib.rs` | 377–389 |
++| `LookupThread` / `IDispatcher::lookup` | `components/dispatcher/src/lib.rs` | 2197-2208 (`?` at 2198) |
++| `LookupThread` / `lookup_async` | `components/dispatcher/src/lib.rs` | 2994-3073 |
++| `LookupThread` / dm.lookup | `components/dispatcher/src/lib.rs` | 3011 |
++| `LookupThread` / NotExist -> KeyNotFound | `components/dispatcher/src/lib.rs` | 3029 |
++| `LookupThread` / MT hit serve + release_read | `components/dispatcher/src/lib.rs` | 3036-3062 (release_read 3056) |
++| `LookupThread` / release_read before promote | `components/dispatcher/src/lib.rs` | 3064 |
++| `LookupThread` / promote_and_serve `?` | `components/dispatcher/src/lib.rs` | 3065 |
++| `LookupThread` / promote_and_serve | `components/dispatcher/src/lib.rs` | 750-908 |
++| `LookupThread` / evict_and_insert call + Err propagation | `components/dispatcher/src/lib.rs` | 768, 789 |
++| `LookupThread` / staging fallback | `components/dispatcher/src/lib.rs` | 770-786, 893-896 |
++| `LookupThread` / channel checkout, SSD read Err | `components/dispatcher/src/lib.rs` | 830, 871-884 (883) |
++| `LookupThread` / in-place promote | `components/dispatcher/src/lib.rs` | 903-907 |
++| `LookupThread` / evict_and_insert | `components/dispatcher/src/lib.rs` | 1176-1224 |
++| `LookupThread` / evict_for_space | `components/dispatcher/src/lib.rs` | 1123-1168 |
++| `evict_one_clean` inline | `components/dispatcher/src/lib.rs` | 1050-1108 |
++| `Evictor` / MemoryTierEvictor loop | `components/dispatcher/src/background.rs` | 471-575 (531, 535) |
++| `SsdEvictor` / BackgroundEvictor loop | `components/dispatcher/src/background.rs` | 279-370 (323, 328, 331) |
++| `SsdEvictor` / get_evictable_offset | `components/dispatcher/src/background.rs` | 384-405 |
++| dm.lookup | `components/dispatch-map/src/lib.rs` | 128-174 |
++| dm.release_read | `components/dispatch-map/src/lib.rs` | 267-285 |
++| dm.remove | `components/dispatch-map/src/lib.rs` | 334-357 |
++| dm.promote_block_to_memory_tier | `components/dispatch-map/src/lib.rs` | 482-528 |
++| dm.try_evict_to_block | `components/dispatch-map/src/lib.rs` | 548-580 |
++| mt.insert | `components/memory-tier/src/lib.rs` | 328-390 |
++| mt.remove | `components/memory-tier/src/lib.rs` | 483-514 |
++| control FIX_RECOVER / serve_concurrently_promoted | `components/dispatcher/src/lib.rs` | 1349-1388 (batch use 2937-2945) |
++| interface: promote_block_to_memory_tier / try_evict_to_block | `components/interfaces/src/idispatch_map.rs` | 160, 186 |
