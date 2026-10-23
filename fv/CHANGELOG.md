@@ -37,3 +37,4 @@ One line per push, newest first. Details are in the commit messages (`git log --
 - 2026-10-16: repair prompt - write and run the red-first test BEFORE changing other source files; helpers go inside the test file (two dispatcher repairs were rejected because their test used a helper from the fix).
 - 2026-10-18: repair check - clears inherited RUSTFLAGS/CARGO_TARGET_DIR (a leaked --cfg loom broke the server build and the Loom target leg, so two correct dispatcher repairs were rejected).
 - 2026-10-22: fv/components/ - the models of each verified component, with results and insights; first: dispatcher (Creusot, Kani, Loom, 5 new + 4 re-synced Spin models, J18-J26).
+- 2026-10-22: fv/QUICKSTART_DRAFT.md (new-user guide: install, verif-branch rules, verify, repair, Loom/Spin) and skill tools-loom-test.
