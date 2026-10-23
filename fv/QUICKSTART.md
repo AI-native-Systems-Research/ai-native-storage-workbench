@@ -11,9 +11,14 @@ is in [README.md](README.md). Read "Before you start" there first.
 
 Today this is 5 steps. Creusot and Kani run with one command; Loom and Spin need a Claude Code session and a person.
 We are working to make it one command for all 4 tools (see "Open items" at the end). The example component is
-`extended-metadata-store`; it has threads, so Loom and Spin are useful for it. Install the tools first (section 1).
+`extended-metadata-store`; it has threads, so Loom and Spin are useful for it. Install the provers first (section 1).
 
 ```
+# Once: clone this workbench and the Certus repository, next to each other (section 1)
+git clone git@github.com:AI-native-Systems-Research/ai-native-storage-workbench.git ~/ai-native-storage-workbench
+git clone git@github.com:AI-native-Systems-Research/ai-native-storage-certus.git ~/ai-native-storage-certus
+#   later, before each verification: git -C ~/ai-native-storage-workbench pull
+
 # 0. A new branch from the latest code (section 2)
 cd ~/ai-native-storage-certus                         # your Certus clone: the folder that contains components/
 git fetch origin && git switch -c verify/extended-metadata-store-20261024 origin/unstable
