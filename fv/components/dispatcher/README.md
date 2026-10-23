@@ -53,21 +53,21 @@ defect, 21 not checked yet.
 
 ## Spin models
 
-| job | model | result |
-|---|---|---|
-| `spin/J18/` | Daniel's `promotion-lookup-race`, with a served-by label added | finds the Loom label bug (J18) |
-| `spin/J20/` | Daniel's 4 out-of-date models, re-synced to the code (`orig/` = before, `diffs/` = the changes) | all 4 fail; 2 new root causes (#30, #31) |
-| `spin/J22/` | `clear_memory_tier`, new, from scratch | use of freed memory (#1), repaired in #562 |
-| `spin/J23/` | `flush_to_ssd` then `clear_memory_tier`, new | data loss after a failed write (#5), repaired in #562 |
-| `spin/J24/` | J18 repeated by GLM-5.3 | same result as J18 |
-| `spin/J25/A/` | `clear_memory_tier` again, GLM-5.3 | same result as J22 |
-| `spin/J25/B/` | a failed promotion, new, GLM-5.3 | the memory slot leaks (#11); repaired, not merged yet |
-| `spin/J26/` | `remove` and the SSD space, new, GLM-5.3 | the SSD space leaks (#9); also a double release and a foreign pin release (#12) |
+One folder for each question; the full list, with the bugs each model shows, is in [spin/README.md](spin/README.md).
 
-Each folder has the model, its `_control` copy with the minimal fix (it must pass), a `Makefile`, a README with the
-tables of the skill (properties, correspondence with the code, returned values, left out), the trails of the
-counterexamples, and the report. Run a model with `make safety` and `make liveness` (Spin 6.5.2; compile `pan` with
-`-DMEMLIM=16000` and use a memory cap).
+| model | what it checks |
+|---|---|
+| `spin/clear-memory-tier-pinned/` | `clear_memory_tier` with pinned lookups and the writer |
+| `spin/flush-then-clear/` | `flush_to_ssd`, then `clear_memory_tier`, after a failed write |
+| `spin/failed-promotion-slot/` | a promotion from SSD that fails |
+| `spin/remove-ssd-extent/` | `remove` and the SSD space |
+| `spin/promotion-lookup-race-label/` | two lookups race to promote one SSD key: the "served from" label |
+| `spin/no-lost-extents/`, `spin/populate-lookup-linearizability/`, `spin/promotion-atomicity/`, `spin/write-before-evict/` | Daniel's 4 models, re-synced to the code |
+
+Each folder has the model, its control copy with the minimal fix (it must pass), a `Makefile`, a README (properties,
+correspondence with the code, returned values, left out) and the trails. Run a model with `make safety` (Spin 6.5.2;
+the Makefile compiles `pan` with `-DMEMLIM=16000` and uses a memory cap). The model test of GLM-5.3 against Claude
+(the same tasks, done twice) is recorded in the notebook, not here.
 
 ## Repairs
 

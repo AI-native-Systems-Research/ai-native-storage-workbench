@@ -1,4 +1,0 @@
-| flush_clear | safety | assertion violated  | errors: 1 | 40 | 40 | 53 | 0 s | 138.877 MB | 1.88 s RSS 142876 KB |
-| flush_clear | liveness | assertion violated  | errors: 1 | 40 | 40 | 93 | 0 s | 138.877 MB | 1.98 s RSS 142880 KB |
-| flush_clear_control | safety |  | errors: 0 | 1522 | 2681 | 91 | 0 s | 138.974 MB | 1.87 s RSS 142868 KB |
-| flush_clear_control | liveness |  | errors: 0 | 1490 | 31310 | 145 | 0.01 s | 138.974 MB | 2.34 s RSS 142876 KB |

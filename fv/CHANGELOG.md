@@ -39,3 +39,4 @@ One line per push, newest first. Details are in the commit messages (`git log --
 - 2026-10-22: fv/components/ - the models of each verified component, with results and insights; first: dispatcher (Creusot, Kani, Loom, 5 new + 4 re-synced Spin models, J18-J26).
 - 2026-10-22: fv/QUICKSTART_DRAFT.md (new-user guide: install, verif-branch rules, verify, repair, Loom/Spin) and skill tools-loom-test.
 - 2026-10-22: fv/QUICKSTART.md (no longer a draft; linked from fv/README.md) - how to run and write Loom tests and Spin models, tested on the dispatcher.
+- 2026-10-23: fv/components/dispatcher/spin: one folder per question with a self-documenting name (no Jxy), current version only; every README has a header (what, result, bugs, Certus commit, history) and a Returned values table; spin/README.md index; all 9 models and controls re-run.

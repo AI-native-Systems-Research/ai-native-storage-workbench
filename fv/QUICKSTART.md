@@ -90,7 +90,7 @@ on the current code.
 Spin 6.5.2 and a C compiler are needed (install: `modelling/spin/install-spin.sh` in the Certus repository).
 Example, one of our models:
 ```
-cd fv/components/dispatcher/spin/J22
+cd fv/components/dispatcher/spin/clear-memory-tier-pinned
 make safety       # every state: prints "errors: 0", or writes <model>.pml.trail
 make liveness     # the protocol does not get stuck (an LTL property, with weak fairness)
 spin -t -p clear_memory_tier.pml     # replay a trail step by step, if there is one

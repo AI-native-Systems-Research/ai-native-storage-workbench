@@ -1,4 +1,0 @@
-| clear_memory_tier | safety | assertion violated 0  | errors: 1 | 137 | 151 | 90 | 0 s | 138.877 MB | 2.31 s RSS 142872 KB |
-| clear_memory_tier | liveness | assertion violated 0  | errors: 1 | 124 | 430 | 152 | 0 s | 138.877 MB | 2.05 s RSS 142872 KB |
-| clear_memory_tier_control | safety |  | errors: 0 | 259816 | 427257 | 105 | 0.13 s | 160.459 MB | 2.20 s RSS 164896 KB |
-| clear_memory_tier_control | liveness |  | errors: 0 | 271534 | 5024989 | 215 | 1.67 s | 161.435 MB | 3.78 s RSS 165924 KB |
