@@ -50,8 +50,16 @@ git push origin verif/creusot/extended-metadata-store-20261024 verif/kani/extend
 - To repair a bug that a tool found, see section 4.
 
 ## 1. Install the tools
-- **Creusot** (with why3 and the SMT provers): skill `skills/tools-creusot-install/`.
-- **Kani** 0.67.0: skill `skills/tools-kani-install/`. Use this exact version, or your results cannot be compared with ours.
+- **This workbench** (our pipeline, scripts and skills), next to your Certus clone:
+  `git clone git@github.com:AI-native-Systems-Research/ai-native-storage-workbench.git ~/ai-native-storage-workbench`
+  Run `git pull` in it before each verification, so that you use the newest version.
+- **Our skills, in your Certus clone:** `bash ~/ai-native-storage-workbench/fv/install.sh <certus-checkout>`.
+  It copies the skills in `fv/skills/` (verify, repair, Loom, Spin, install) into `<certus-checkout>/.claude/skills/`,
+  so that Claude Code finds them there (for example `/tools-loom-test`). It replaces skills of the same name; do
+  not commit `.claude/` (`git checkout -- .claude` undoes it). The pipeline commands (`fv_agent.py`) run from the
+  workbench and need no install.
+- **Creusot** (with why3 and the SMT provers): skill `fv/skills/tools-creusot-install/`.
+- **Kani** 0.67.0: skill `fv/skills/tools-kani-install/`. Use this exact version, or your results cannot be compared with ours.
 - **Loom**: nothing to install. It is a Rust crate (`loom = "0.7"`); each `verif-loom/` crate declares it.
 - **Spin** 6.5.2: `modelling/spin/install-spin.sh` in the Certus repository (Daniel's script).
 - **Claude Code** (`claude`) on `PATH`, and Python 3.9+ with PyYAML.
