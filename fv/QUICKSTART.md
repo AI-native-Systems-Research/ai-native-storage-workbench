@@ -77,7 +77,8 @@ Or run each step yourself with `fv/driver/fv_driver.py <step> <checkout> <compon
 - `unified_properties.yaml`: every property, with its result from each tool and the scorer's evidence.
 - `spec_properties.yaml` and `code_properties.yaml`: the two independent lists. One agent read only the
   specification, the other only the code. They are always kept (also on the branches), so that the extraction,
-  Level 1 and the classifier can be tested again on them.
+  Level 1 and the classifier can be tested again on them. This is for the test period of the pipeline (decision
+  of 2026-10-23); later, an option may write them only when they are needed.
 - `discordances.yaml`: where the two lists disagree, with the class of each disagreement (A, B, C or ?).
 - `<c>_scoring.html`: one page with the result of each property (proved, counterexample or open), for each tool.
 - `<c>_discordances.html`: where the specification and the code disagree.
@@ -170,6 +171,8 @@ Claude Code's auto mode does not work through a non-Anthropic gateway. Use `--pe
 allow list instead. (Scripts `glm-night` and `jrun`; to be added here.)
 
 ## Open items for this page
+- After the test period of the pipeline: an option for `verify` / `publish` to keep the two independent property
+  lists (`spec_properties.yaml`, `code_properties.yaml`) only when needed. Today they are always kept.
 - A Spin step in the pipeline, and Spin results in the property bundle.
 - `fv_agent.py publish`: add the Loom and Spin branches, and write them to the workbench repository.
 - The GLM scripts.
