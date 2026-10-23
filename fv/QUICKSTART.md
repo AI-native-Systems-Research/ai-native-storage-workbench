@@ -74,8 +74,11 @@ Or run each step yourself with `fv/driver/fv_driver.py <step> <checkout> <compon
 
 ### 3a. The results, the branches and the push
 **The results** (written by `verify`, in `components/<c>/verif/` of the checkout):
-- `unified_properties.yaml`: every property, with its result from each tool and the scorer's evidence. Also
-  `spec_properties.yaml`, `code_properties.yaml` and `discordances.yaml`.
+- `unified_properties.yaml`: every property, with its result from each tool and the scorer's evidence.
+- `spec_properties.yaml` and `code_properties.yaml`: the two independent lists. One agent read only the
+  specification, the other only the code. They are always kept (also on the branches), so that the extraction,
+  Level 1 and the classifier can be tested again on them.
+- `discordances.yaml`: where the two lists disagree, with the class of each disagreement (A, B, C or ?).
 - `<c>_scoring.html`: one page with the result of each property (proved, counterexample or open), for each tool.
 - `<c>_discordances.html`: where the specification and the code disagree.
 
