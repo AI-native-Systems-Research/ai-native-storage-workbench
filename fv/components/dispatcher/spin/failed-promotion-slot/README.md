@@ -2,7 +2,7 @@
 
 > **What it checks:** a promotion from SSD that fails: the reserved memory slot is released, and the key can be read again.
 > **Result:** the model fails (P1, P3, P5); the control copy passes; 3 mutants fail as they must.
-> **The bugs:** root cause #11 (a failed promotion keeps its memory slot), repaired by GLM-5.3, in PR #570 (open).
+> **The bugs:** root cause #11 (a failed promotion keeps its memory slot), repaired by GLM-5.3, merged in PR #570.
 > **Certus commit:** `acd24025`.
 > **History:** written from scratch in J25-B (GLM-5.3, 2026-10-21).
 

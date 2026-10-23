@@ -83,7 +83,7 @@ the Makefile compiles `pan` with `-DMEMLIM=16000` and uses a memory cap). The mo
 | #1 | `clear_memory_tier` frees memory that a reader holds | Creusot, Spin | Loom | merged #562 |
 | #5, #16 | `flush_to_ssd` returns `Ok` after a failed write; wrong count | Kani, Spin | Loom | merged #562 |
 | A-07 | the counter `store_already_resident` counts a lost load race | spec review | Loom | merged #562 |
-| #11 | a failed promotion does not release its memory slot | Creusot, Spin | Loom | accepted 2026-10-22, not merged |
+| #11 | a failed promotion does not release its memory slot | Creusot, Spin | Loom | merged #570 |
 | #9, #12 | `remove` does not release the SSD space; releases a foreign pin | Spin | (Loom) | repair running |
 
 ## Known limits

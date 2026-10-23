@@ -2,7 +2,7 @@
 
 > **What it checks:** a promotion from SSD to the memory tier is atomic when lookups and the SSD evictor run at the same time.
 > **Result:** re-synced to the code: the model fails (errors: 1); the control copy passes.
-> **The bugs:** root causes #31 (the SSD evictor frees a slot before the map removal), repaired in PR #555, and #11 (a failed promotion keeps its slot), repaired in PR #570 (open).
+> **The bugs:** root causes #31 (the SSD evictor frees a slot before the map removal), repaired in PR #555, and #11 (a failed promotion keeps its slot), repaired in PR #570.
 > **Certus commit:** `acd24025`.
 > **History:** Daniel's model, re-synced to the code in J20 (Claude, 2026-10-17). `before_resync/` has Daniel's version and the diff.
 
