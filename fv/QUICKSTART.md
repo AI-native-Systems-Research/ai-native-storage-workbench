@@ -7,6 +7,48 @@ is in [README.md](README.md). Read "Before you start" there first.
 > **Loom and Spin are not in the pipeline yet:** you run them by hand. See
 > [section 5](#5-concurrency-loom-and-spin) for the commands.
 
+## Example: verify one component with all 4 tools
+
+Today this is 5 steps. Creusot and Kani run with one command; Loom and Spin need a Claude Code session and a person.
+We are working to make it one command for all 4 tools (see "Open items" at the end). The example component is
+`extended-metadata-store`; it has threads, so Loom and Spin are useful for it. Install the tools first (section 1).
+
+```
+# 0. A new branch from the latest code (section 2)
+cd ~/ai-native-storage-certus                         # your Certus clone: the folder that contains components/
+git fetch origin && git switch -c verify/extended-metadata-store-20261024 origin/unstable
+W=~/ai-native-storage-workbench/fv                     # this folder
+bash $W/install.sh .                                   # copies our skills (tools-loom-test, tools-spin-model, ...) into
+                                                       # .claude/skills/ of this clone, so the /commands below exist.
+                                                       # It replaces skills of the same name there: do not commit
+                                                       # .claude/ (git checkout -- .claude to undo it)
+
+# 1. Creusot and Kani: one command, unattended, several hours (section 3)
+python3 $W/agent/fv_agent.py verify . extended-metadata-store
+
+# 2. Loom: by hand (section 5, "Loom: write new tests")
+claude
+#   type: /tools-loom-test extended-metadata-store <property ids of class C in verif/discordances.yaml>
+#   then run each test (section 5, "Loom: run the existing tests")
+
+# 3. Spin: by hand (section 5, "Spin: write a new model")
+claude
+#   type: /tools-spin-model <the protocol or the suspected bug>
+#   then, in the model's folder: make safety && make liveness
+
+# 4. The branches: publish makes the Creusot and Kani branches, local only (section 3a)
+python3 $W/agent/fv_agent.py publish . extended-metadata-store
+
+# 5. Check the results, then push (section 3a)
+#   open components/extended-metadata-store/verif/extended-metadata-store_scoring.html
+git push origin verif/creusot/extended-metadata-store-20261024 verif/kani/extended-metadata-store-20261024
+```
+
+**Limits today:**
+- No command makes the Loom and Spin branches yet. Commit their files on a branch by hand.
+- The Loom and Spin results are not in the property list or the HTML page yet.
+- To repair a bug that a tool found, see section 4.
+
 ## 1. Install the tools
 - **Creusot** (with why3 and the SMT provers): skill `skills/tools-creusot-install/`.
 - **Kani** 0.67.0: skill `skills/tools-kani-install/`. Use this exact version, or your results cannot be compared with ours.
@@ -171,6 +213,9 @@ Claude Code's auto mode does not work through a non-Anthropic gateway. Use `--pe
 allow list instead. (Scripts `glm-night` and `jrun`; to be added here.)
 
 ## Open items for this page
+- One command for all 4 tools: a Loom step and a Spin step in `fv_agent.py verify --tools creusot,kani,loom,spin`,
+  their results in the property list and the HTML page, and `publish` making all 4 branches. Then the example at
+  the top becomes 3 commands.
 - After the test period of the pipeline: an option for `verify` / `publish` to keep the two independent property
   lists (`spec_properties.yaml`, `code_properties.yaml`) only when needed. Today they are always kept.
 - A Spin step in the pipeline, and Spin results in the property bundle.
