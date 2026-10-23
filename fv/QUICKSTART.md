@@ -3,6 +3,10 @@
 This page tells you how to verify one Certus component with the tools in `fv/`. The full description of each step
 is in [README.md](README.md). Read "Before you start" there first.
 
+> **Note:** the pipeline (`fv_agent.py verify`, section 3) runs **Creusot and Kani** automatically.
+> **Loom and Spin are not in the pipeline yet:** you run them by hand. See
+> [section 5](#5-concurrency-loom-and-spin) for the commands.
+
 ## 1. Install the tools
 - **Creusot** (with why3 and the SMT provers): skill `skills/tools-creusot-install/`.
 - **Kani** 0.67.0: skill `skills/tools-kani-install/`. Use this exact version, or your results cannot be compared with ours.
@@ -41,7 +45,7 @@ From a Certus checkout on a LOCAL branch (step 2.3):
 python3 fv/agent/fv_agent.py verify <certus-checkout> <component>          # default tools: creusot,kani
 python3 fv/agent/fv_agent.py publish <certus-checkout> <component>         # makes the local verif branches
 ```
-This runs extract, level1-check, classify, prove and check, unattended. Or run each step yourself with
+This runs extract, level1-check, classify, prove and check, unattended, with Creusot and Kani. For Loom and Spin, see section 5. Or run each step yourself with
 `fv/driver/fv_driver.py <step> <checkout> <component>` (see README.md, "The steps").
 
 The result is the bundle `components/<component>/verif/unified_properties.yaml` and the pages in the same folder.
