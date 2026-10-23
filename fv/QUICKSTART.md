@@ -1,4 +1,4 @@
-# Quick start for a new user (DRAFT 2026-10-22 - not yet linked from README.md)
+# Quick start for a new user
 
 This page tells you how to verify one Certus component with the tools in `fv/`. The full description of each step
 is in [README.md](README.md). Read "Before you start" there first.
@@ -58,18 +58,61 @@ python3 fv/driver/fv_driver.py repair <checkout> <component> --property <ID> --f
 - Then a spec-kit sync (`/component-sync-specs`), approved by a person, and a pull request. A maintainer merges it.
 
 ## 5. Concurrency: Loom and Spin
-- **Loom** tests live in `components/<c>/verif-loom/`. They run on a mirror of the concurrent code. The file
-  `mirrored_sources.sha256` records the real files that the mirror copies; check it before every run. Each test
-  has a twin (`__mutant`) that must fail. Skill: `skills/tools-loom-test/`.
-- **Spin** models: skills `skills/tools-spin-model/` (write a new model) and `skills/tools-spin-sync/` (update a
-  model to the current code). Each model has a `_control` copy with a minimal fix that must pass. Examples:
-  `fv/components/dispatcher/spin/`.
+Today you run Loom and Spin by hand. The pipeline (`fv_agent.py verify`) runs Creusot and Kani only, and the
+property bundle does not record Spin results yet.
+
+### Loom: run the existing tests
+The Loom tests of a component are in the Certus repository, in `components/<c>/verif-loom/`. They run on a mirror
+of the concurrent code.
+```
+cd components/<c>
+sha256sum -c verif-loom/mirrored_sources.sha256        # 1. the mirror must match the current code
+cd verif-loom
+RUSTFLAGS="--cfg loom" cargo test --release --test loom_props -- --list            # 2. list the tests
+RUSTFLAGS="--cfg loom" timeout 900 cargo test --release --test loom_props <test> -- --exact   # 3. run one test
+```
+- If step 1 fails, the code changed: update the mirror first (skill `skills/tools-loom-test/`, step 0). A test on
+  an old mirror proves nothing about the current code.
+- Run one test at a time. Set `RUSTFLAGS="--cfg loom"` only on the Loom command; if it leaks into other builds,
+  they fail.
+- Each `verify_<id>` test has a twin `verify_<id>__mutant`, and the twin must FAIL. A pass of the twin means that
+  the test checks nothing.
+- A test that says `preemption_bound = Some(3)` searches only the thread orders with at most 3 preemptions. That is
+  a weaker result than a full search.
+- The first build downloads the `loom` crate, so it needs internet access.
+
+### Loom: write new tests
+Use the skill `skills/tools-loom-test/` in a Claude Code session in the Certus checkout:
+`/tools-loom-test <component> <property ids>`. For a repair, commit the new test into the base first: it must fail
+on the current code.
+
+### Spin: run an existing model
+Spin 6.5.2 and a C compiler are needed (install: `modelling/spin/install-spin.sh` in the Certus repository).
+Example, one of our models:
+```
+cd fv/components/dispatcher/spin/J22
+make safety       # every state: prints "errors: 0", or writes <model>.pml.trail
+make liveness     # the protocol does not get stuck (an LTL property, with weak fairness)
+spin -t -p clear_memory_tier.pml     # replay a trail step by step, if there is one
+```
+- Each folder has a `_control` copy with the minimal fix. It must pass: this shows that a failure comes from the
+  bug, not from the model.
+- The `Makefile` runs `pan` in a memory-capped scope and compiles it with `-DMEMLIM=16000`. Keep these limits for a
+  large model.
+- Each model names the Certus commit that it follows. If the code has changed since, update the model first
+  (`/tools-spin-sync`); an old model can pass and still miss a bug.
+
+### Spin: write a new model
+In a Claude Code session in the Certus checkout:
+- `/tools-spin-model <bug or property>` writes a new Promela model from the code. Each step names its line in the
+  code. The README of the model must list every value that the code returns, or put it under "Left out".
+- `/tools-spin-sync` updates an existing model to the current code.
 
 ## 6. Unattended jobs with an open model (GLM-5.3) - optional
 Claude Code's auto mode does not work through a non-Anthropic gateway. Use `--permission-mode dontAsk` with an
 allow list instead. (Scripts `glm-night` and `jrun`; to be added here.)
 
 ## Open items for this page
-- A Spin step in the pipeline (today we run Spin jobs by hand).
+- A Spin step in the pipeline, and Spin results in the property bundle.
 - `fv_agent.py publish`: add the Loom and Spin branches, and write them to the workbench repository.
 - The GLM scripts.

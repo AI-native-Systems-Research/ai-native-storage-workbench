@@ -5,8 +5,10 @@ fix is right. AI agents (headless Claude Code) do the reading, the proof writing
 verdict** - an agent never grades its own work.
 
 Tools: **Creusot** (deductive proofs, unbounded), **Kani** (bounded model checking on the real code), **Loom** (every
-thread interleaving of a concurrent component). Results so far: 13 of 22 components verified; 6 real bugs in 11 places
-found, fixed and re-proved.
+thread interleaving of a concurrent component), **Spin** (every state of a design model). Results so far: 14
+components verified; on the dispatcher alone, 10 confirmed bugs repaired and merged (see `components/dispatcher/`).
+
+**New user? Start with [QUICKSTART.md](QUICKSTART.md):** install, verification branches, verify, repair, Loom and Spin.
 
 ## How the pieces fit
 ```
