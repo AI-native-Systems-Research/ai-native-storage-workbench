@@ -23,6 +23,7 @@ this workbench repository from now on). `<tool>` is `creusot`, `kani`, `loom` or
 1. **Look first.**
    `git fetch origin && git branch -r | grep "verif/.*/<component>"`
    Each branch has a date in its name. Its README (or `SOURCE.md`) names the Certus commit that it checked.
+   The newest branch of each component is listed in [components/README.md](components/README.md).
 2. **Do not delete an old branch, and do not reuse it.** It is the evidence of what was proved on that code. A new
    run does not replace it: it gets its own branch, so that the two can be compared.
 3. **Start from the latest code.** Make a new local branch from the newest `unstable`:
