@@ -72,6 +72,35 @@ level1-check and classify).
 
 Or run each step yourself with `fv/driver/fv_driver.py <step> <checkout> <component>` (see README.md, "The steps").
 
+### 3a. The results, the branches and the push
+**The results** (written by `verify`, in `components/<c>/verif/` of the checkout):
+- `unified_properties.yaml`: every property, with its result from each tool and the scorer's evidence. Also
+  `spec_properties.yaml`, `code_properties.yaml` and `discordances.yaml`.
+- `<c>_scoring.html`: one page with the result of each property (proved, counterexample or open), for each tool.
+- `<c>_discordances.html`: where the specification and the code disagree.
+
+**The branches** (made by `publish`, from the base commit of the checkout; LOCAL only):
+- `verif/creusot/<c>-<date>`: the `verif/` folder (the YAML and the HTML) and the Creusot proof crate.
+- `verif/kani/<c>-<date>`: the same `verif/` folder and the Kani proof crate.
+
+**The push** (you do it; `publish` never pushes, so that a person looks at the results first):
+1. Open `components/<c>/verif/<c>_scoring.html` in a browser, and check the results.
+2. Push the two branches. Use the names that `publish` printed:
+   `git push origin verif/creusot/<c>-<date> verif/kani/<c>-<date>`
+3. Update the table of the newest branches: `python3 fv/tools/verif_branch_table.py <certus-checkout>`, and put its
+   output in `fv/components/README.md`.
+
+**Example**, with `logger`. `<certus-checkout>` is the folder of your Certus clone (the folder that contains
+`components/`):
+```
+cd ~/ai-native-storage-certus
+git fetch origin && git switch -c verify/logger-20261024 origin/unstable
+python3 ~/ai-native-storage-workbench/fv/agent/fv_agent.py verify . logger
+python3 ~/ai-native-storage-workbench/fv/agent/fv_agent.py publish . logger
+#   open components/logger/verif/logger_scoring.html and check it
+git push origin verif/creusot/logger-20261024 verif/kani/logger-20261024
+```
+
 ## 4. Repair a bug that verification found
 ```
 python3 fv/driver/fv_driver.py repair <checkout> <component> --property <ID> --finding <short-name> [--loom]
