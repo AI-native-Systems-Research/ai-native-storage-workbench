@@ -46,11 +46,31 @@ From a Certus checkout on a LOCAL branch (step 2.3):
 python3 fv/agent/fv_agent.py verify <certus-checkout> <component>          # default tools: creusot,kani
 python3 fv/agent/fv_agent.py publish <certus-checkout> <component>         # makes the local verif branches
 ```
-This runs extract, level1-check, classify, prove and check, unattended, with Creusot and Kani. For Loom and Spin, see section 5. Or run each step yourself with
-`fv/driver/fv_driver.py <step> <checkout> <component>` (see README.md, "The steps").
 
-The result is the bundle `components/<component>/verif/unified_properties.yaml` and the pages in the same folder.
-Only the scorer writes a result. An agent never does.
+**What `verify` does, in this order** (unattended; a large component takes several hours):
+1. **extract:** two Claude agents read the specification and the code separately, and write the property list
+   (`components/<c>/verif/unified_properties.yaml`). It is skipped if the list already exists.
+2. **level1-check:** finds where the specification and the code disagree.
+3. **classify:** two agents put each disagreement in a class: A (prove it with Creusot), B (a bug candidate: Kani,
+   then a repair), C (another tool: Loom or Spin), or ? (a person decides).
+4. **prove:** Creusot, then Kani, on the properties. A scorer runs every proof again, with a broken twin that must
+   fail, and only the scorer writes a result.
+5. **check:** if some properties are still open, a supervisor agent chooses: retry some of them with a tool, or stop.
+   It does this for at most 2 rounds (`--rounds`).
+6. **The end:** `DONE`, or `stopped` with the reason. The pages (`components/<c>/verif/*.html`) show each property
+   with its result: proved, counterexample, or open.
+
+If you run `verify` again on the same commit, it reuses the steps that already finished (`--redo` repeats
+level1-check and classify).
+
+**What `verify` does NOT do:**
+- It does not create branches. Run `publish` for that: it makes `verif/creusot/<c>-<date>` and
+  `verif/kani/<c>-<date>` as LOCAL branches, and never pushes. Push them yourself.
+- It does not repair a bug. A counterexample stays in the bundle. To repair it, see section 4.
+- It does not run Loom or Spin. See section 5.
+- It does not change the product code. It writes only into `components/<c>/verif*/`.
+
+Or run each step yourself with `fv/driver/fv_driver.py <step> <checkout> <component>` (see README.md, "The steps").
 
 ## 4. Repair a bug that verification found
 ```
